@@ -1,6 +1,9 @@
 """Image demo script."""
 import argparse
-import os
+import os, sys
+import os.path as osp
+project_dir = osp.join(osp.dirname(os.path.abspath(__file__)), '..')
+sys.path.insert(0, project_dir)  # '/home/ssw/code/romp/romp/' + 'lib'
 
 import cv2
 import numpy as np
@@ -36,19 +39,19 @@ parser.add_argument('--gpu',
                     type=int)
 parser.add_argument('--img-dir',
                     help='image folder',
-                    default='',
+                    default='demo',
                     type=str)
 parser.add_argument('--out-dir',
                     help='output folder',
-                    default='',
+                    default='output',
                     type=str)
 opt = parser.parse_args()
 
 
 # cfg_file = 'configs/256x192_adam_lr1e-3-res34_smpl_3d_cam_2x_mix_w_pw3d.yaml'
 # CKPT = './pretrained_w_cam.pth'
-cfg_file = 'configs/256x192_adam_lr1e-3-hrw48_cam_2x_w_pw3d_3dhp.yaml'
-CKPT = './pretrained_hrnet.pth'
+cfg_file = 'configs/256x192_adam_lr1e_3_hrw48_cam_2x_w_pw3d_3dhp.yaml'
+CKPT = 'pretrained_model/pretrained_hr48.pth'
 cfg = update_config(cfg_file)
 
 bbox_3d_shape = getattr(cfg.MODEL, 'BBOX_3D_SHAPE', (2000, 2000, 2000))
@@ -89,11 +92,11 @@ hybrik_model.cuda(opt.gpu)
 det_model.eval()
 hybrik_model.eval()
 
-files = os.listdir(opt.img_dir)
+files = os.listdir(osp.join(project_dir, opt.img_dir))
 smpl_faces = torch.from_numpy(hybrik_model.smpl.faces.astype(np.int32))
 
-if not os.path.exists(opt.out_dir):
-    os.makedirs(opt.out_dir)
+if not os.path.exists(osp.join(project_dir, opt.out_dir)):
+    os.makedirs(osp.join(project_dir, opt.out_dir))
 
 for file in tqdm(files):
     if not os.path.isdir(file) and file[-4:] in ['.jpg', '.png']:

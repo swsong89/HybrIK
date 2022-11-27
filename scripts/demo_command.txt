@@ -1,0 +1,19 @@
+videos 单人
+
+python scripts/demo_video.py --video-name demo/dance.mp4 --out-dir demo/dance.mp4 --save-img
+# 然后可以用python ../tool/tool.py -m i -i demo/dance/res_images/ -o demo/dance_ik.mp4 生成可以在ubuntu看的视频，之前生成的只能在window看
+
+images
+
+python scripts/demo_image.py --img-dir demo/ --out-dir demo
+
+
+# 代码里面的图片生成视频不能在vscode看，更改用tool.py手动生成
+python /home/ssw/code/tool/tool.py -m i -i ./demo_dance_final_images
+
+
+video 多人 --out-dir demo/output
+python scripts/demo_m_video.py --video-name demo/dance.mp4
+
+image 多人
+python scripts/demo_m_image.py --img demo/crowd.jpg

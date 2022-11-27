@@ -1,0 +1,16 @@
+numpy
+six
+terminaltables
+scipy
+cython
+opencv-python==4.1.2.30
+matplotlib
+pycocotools
+tqdm
+easydict
+chumpy
+pyyaml
+tb-nightly
+future
+ffmpeg-python
+# 论文版本是Commits on Sep 30, 2022 update demo config
