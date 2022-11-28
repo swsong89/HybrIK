@@ -14,3 +14,5 @@ tb-nightly
 future
 ffmpeg-python
 # 论文版本是Commits on Sep 30, 2022 update demo config
+# 先pip install -r requirements.txt
+#再 python setup.py develop 

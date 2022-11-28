@@ -142,6 +142,7 @@ class MixDataset2Cam(data.Dataset):
             self.db0 = H36mSMPL(
                 cfg=cfg,
                 ann_file=cfg.DATASET.SET_LIST[0].TEST_SET,
+                root=cfg.DATASET.DATASET_DIR+'/h36m',
                 train=train)
 
             self._subsets = [self.db0]

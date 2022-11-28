@@ -1,5 +1,4 @@
 DATASET:
-  DATASET_DIR: '/home/ssw/code/dataset'
   DATASET: 'mix2_smpl_cam'
   SET_LIST:
     - ROOT: 'h36m'
@@ -69,7 +68,7 @@ TEST:
   HEATMAP2COORD: 'coord'
 TRAIN:
   WORLD_SIZE: 1
-  BATCH_SIZE: 8
+  BATCH_SIZE: 2
   BEGIN_EPOCH: 0
   END_EPOCH: 200
   OPTIMIZER: 'adam'

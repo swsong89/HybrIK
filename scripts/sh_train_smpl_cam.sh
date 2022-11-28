@@ -3,7 +3,7 @@
 CONFIG='configs/256x192_adam_lr1e_3_hrw48_cam_2x_w_pw3d_3dhp.yaml'
 
 # CKPT='pretrained_model/pretrained_hr48.pth'
-
+# 
 
 EXPID='test_3dpw'
 PORT=${3:-23458}

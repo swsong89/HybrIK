@@ -124,14 +124,17 @@ class MixDatasetCam(data.Dataset):
             self.db0 = H36mSMPL(
                 cfg=cfg,
                 ann_file=cfg.DATASET.SET_LIST[0].TRAIN_SET,
+                root=cfg.DATASET.DATASET_DIR+'/h36m',
                 train=True)
             self.db1 = Mscoco(
                 cfg=cfg,
                 ann_file=f'person_keypoints_{cfg.DATASET.SET_LIST[1].TRAIN_SET}.json',
+                root=cfg.DATASET.DATASET_DIR+'/coco',
                 train=True)
             self.db2 = HP3D(
                 cfg=cfg,
                 ann_file=cfg.DATASET.SET_LIST[2].TRAIN_SET,
+                root=cfg.DATASET.DATASET_DIR+'/mpi_inf_3dhp',
                 train=True)
 
             self._subsets = [self.db0, self.db1, self.db2]
@@ -141,6 +144,7 @@ class MixDatasetCam(data.Dataset):
             self.db0 = H36mSMPL(
                 cfg=cfg,
                 ann_file=cfg.DATASET.SET_LIST[0].TEST_SET,
+                root=cfg.DATASET.DATASET_DIR+'/h36m',
                 train=train)
 
             self._subsets = [self.db0]

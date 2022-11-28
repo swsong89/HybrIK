@@ -65,11 +65,28 @@ parser.add_argument('--flip-shift',
                     dest='flip_shift',
                     help='flip shift',
                     action='store_true')
-
+parser.add_argument('--gpu',
+                    default='3',
+                    type =str,
+                    help='gpu')
 
 opt = parser.parse_args()
 cfg_file_name = opt.cfg.split('/')[-1]
 cfg = update_config(opt.cfg)
+
+# 设置gpu
+os.environ["CUDA_VISIBLE_DEVICES"] = opt.gpu
+
+# 添加根目录
+currentfile = os.path.abspath(__file__)  # '/home/ssw/code/ik/Hybrik/opt.py'
+if 'data2' in currentfile: # 3090
+    dataset_dir = '/data2/2020/ssw/dataset'
+elif 'code' in currentfile: # r9000p
+    dataset_dir = '/home/ssw/code/dataset'
+else:
+    raise IOError('dataset {} not exists.'.format(currentfile))
+
+cfg['DATASET']['DATASET_DIR'] = dataset_dir
 
 cfg['FILE_NAME'] = cfg_file_name
 cfg.TRAIN.DPG_STEP = [i - cfg.TRAIN.DPG_MILESTONE for i in cfg.TRAIN.DPG_STEP]
