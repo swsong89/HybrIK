@@ -94,7 +94,7 @@ hybrik_model.cuda(opt.gpu)
 hybrik_model.eval()
 
 print('### 处理图片目录...')
-if not os.path.exists(opt.out_dir): # output_dir不存在
+if opt.out_dir == '': # output_dir不存在
     opt.out_dir = osp.join(osp.dirname(opt.img), 'output')
     out_tmp_video_dir = osp.join(opt.out_dir, 'tmp_video', osp.basename(opt.img).split('.')[0])
 else:
