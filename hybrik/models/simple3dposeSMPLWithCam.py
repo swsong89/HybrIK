@@ -62,6 +62,7 @@ class Simple3DPoseBaseSMPLCam(nn.Module):
             self.feature_channel = 512
         else:
             raise NotImplementedError
+        print('Loading resnet backbone model...')
         model_state = self.preact.state_dict()
         state = {k: v for k, v in x.state_dict().items()
                  if k in self.preact.state_dict() and v.size() == self.preact.state_dict()[k].size()}

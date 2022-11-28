@@ -1,9 +1,11 @@
 """Script for multi-gpu training."""
+import argparse
+import logging
 import os
 import pickle as pk
 import random
 import sys
-
+import time
 import numpy as np
 import torch
 import torch.multiprocessing as mp
@@ -30,6 +32,7 @@ def _init_fn(worker_id):
 
 
 def train(opt, train_loader, m, criterion, optimizer, writer, epoch_num):
+    print('enter_train')
     loss_logger = DataLogger()
     acc_uvd_29_logger = DataLogger()
     acc_xyz_17_logger = DataLogger()
@@ -41,7 +44,9 @@ def train(opt, train_loader, m, criterion, optimizer, writer, epoch_num):
 
     if opt.log:
         train_loader = tqdm(train_loader, dynamic_ncols=True)
-
+    print('enenumerate train')
+    print_freq = 50
+    start_time = time.time()
     for j, (inps, labels, _, bboxes) in enumerate(train_loader):
         if isinstance(inps, list):
             inps = [inp.cuda(opt.gpu).requires_grad_() for inp in inps]
@@ -94,14 +99,22 @@ def train(opt, train_loader, m, criterion, optimizer, writer, epoch_num):
 
         opt.trainIters += 1
         if opt.log:
-            # TQDM
-            train_loader.set_description(
-                'loss: {loss:.8f} | accuvd29: {accuvd29:.4f} | acc17: {acc17:.4f}'.format(
+            # TQDM 下面set_description是给tqdm显示打印的，变成loss: 8.06730000 | accuvd29: 0.0813 | acc17: 0.0800:   0%|▏                                                          | 254/78047 [00:40<3:26:42,  6.27it/s]
+            # loss desciption loss: 7.54187632 | accuvd29: 0.0575 | acc17: 0.0000
+            loss_desciption ='loss: {loss:.8f} | accuvd29: {accuvd29:.4f} | acc17: {acc17:.4f}'.format(
                     loss=loss_logger.avg,
                     accuvd29=acc_uvd_29_logger.avg,
                     acc17=acc_xyz_17_logger.avg)
-            )
+            train_loader.set_description(loss_desciption)
+            # logging的频率
+            
+            if j%print_freq == 0:
+                time_print_freq = time.time() - start_time
+                start_time = time.time()
+                loss_desciption += '  time: {:.2f}s  total_time: {:.2f}m'.format(time_print_freq, len(train_loader)/print_freq*time_print_freq/60)
+                logger.iterInfo(opt.epoch, j, len(train_loader), loss_desciption)
 
+    
     if opt.log:
         train_loader.close()
 
@@ -197,6 +210,9 @@ def setup_seed(seed):
 
 
 def main():
+    # print(opt)
+    # opt = argparse.Namespace(board=True, cfg='configs/256x192_adam_lr1e_3_res34_smpl_3d_cam_2x_mix_w_pw3d.yaml', debug=False, dist_backend='nccl', dist_url='tcp://127.0.1.1:23456', dynamic_lr=False, exp_id='test_3dpw', exp_lr=False, flip_shift=False, flip_test=True, launcher='pytorch', map=True, nThreads=8, params=False, rank=0, seed=123123, snapshot=2, sync=False, work_dir='./exp/mix2_smpl_cam/256x192_adam_lr1e-3-res34_smpl_3d_cam_2x_mix_w_pw3d.yaml-test_3dpw/', world_size=0)
+    print(opt)
     if opt.seed is not None:
         setup_seed(opt.seed)
 
@@ -205,7 +221,8 @@ def main():
     else:
         ngpus_per_node = torch.cuda.device_count()
         opt.ngpus_per_node = ngpus_per_node
-        mp.spawn(main_worker, nprocs=ngpus_per_node, args=(opt, cfg))
+        # mp.spawn(main_worker, nprocs=ngpus_per_node, args=(opt, cfg))
+        main_worker(0, opt, cfg)
 
 
 def main_worker(gpu, opt, cfg):
@@ -290,6 +307,7 @@ def main_worker(gpu, opt, cfg):
     gt_val_dataset_3dpw = PW3D(
         cfg=cfg,
         ann_file='3DPW_test_new.json',
+        root=cfg.DATASET.DATASET_DIR+'/3DPW',
         train=False)
 
     opt.trainIters = 0
@@ -337,10 +355,10 @@ def main_worker(gpu, opt, cfg):
 def preset_model(cfg):
     model = builder.build_sppe(cfg.MODEL)
 
-    if cfg.MODEL.PRETRAINED:
+    if cfg.MODEL.PRETRAINED:  # PRETRAINED相当于在这个模型的基础上再进行训练,而不是backbone pretrained_model
         logger.info(f'Loading model from {cfg.MODEL.PRETRAINED}...')
         model.load_state_dict(torch.load(cfg.MODEL.PRETRAINED, map_location='cpu'))
-    elif cfg.MODEL.TRY_LOAD:
+    elif cfg.MODEL.TRY_LOAD:  # try load就相当于是预训练加载,比如backbone是hr32,然后部分模块和backbone不一样,那么就加载部分共同的参数
         logger.info(f'Loading model from {cfg.MODEL.TRY_LOAD}...')
         pretrained_state = torch.load(cfg.MODEL.TRY_LOAD, map_location='cpu')
         model_state = model.state_dict()

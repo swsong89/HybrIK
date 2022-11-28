@@ -18,17 +18,21 @@ from tqdm import tqdm
 parser = argparse.ArgumentParser(description='HybrIK Validate')
 parser.add_argument('--cfg',
                     help='experiment configure file name',
-                    required=True,
+                    default='configs/256x192_adam_lr1e-3-res34_smpl_3d_cam_2x_mix_w_3dhp.yaml',
+                    # required=True,
                     type=str)
 parser.add_argument('--checkpoint',
                     help='checkpoint file name',
-                    required=True,
+                    default='pretrained_model/pretrained_w_cam.pth',
+                    # required=True,
                     type=str)
 parser.add_argument('--gpus',
                     help='gpus',
+                    default = '0',
                     type=str)
 parser.add_argument('--batch',
                     help='validation batch size',
+                    default='8',
                     type=int)
 parser.add_argument('--flip-test',
                     default=False,
@@ -40,15 +44,15 @@ parser.add_argument('--flip-shift',
                     dest='flip_shift',
                     help='flip shift',
                     action='store_true')
-parser.add_argument('--rank', default=-1, type=int,
+parser.add_argument('--rank', default=0, type=int,
                     help='node rank for distributed testing')
-parser.add_argument('--dist-url', default='tcp://192.168.1.219:23456', type=str,
+parser.add_argument('--dist-url', default='tcp://127.0.1.2:23457', type=str,
                     help='url used to set up distributed testing')
 parser.add_argument('--dist-backend', default='nccl', type=str,
                     help='distributed backend')
-parser.add_argument('--launcher', choices=['none', 'pytorch', 'slurm', 'mpi'], default='none',
+parser.add_argument('--launcher', choices=['none', 'pytorch', 'slurm', 'mpi'], default='pytorch',
                     help='job launcher')
-parser.add_argument('--world-size', default=-1, type=int,
+parser.add_argument('--world-size', default=1, type=int,
                     help='number of nodes for distributed testing')
 
 opt = parser.parse_args()
@@ -203,11 +207,13 @@ def main_worker(gpu, opt, cfg):
     gt_val_dataset_h36m = H36mSMPL(
         cfg=cfg,
         ann_file='Sample_20_test_Human36M_smpl',
+        root=cfg.DATASET.DATASET_DIR+'/h36m',
         train=False)
 
     gt_val_dataset_3dpw = PW3D(
         cfg=cfg,
         ann_file='3DPW_test_new.json',
+        root=cfg.DATASET.DATASET_DIR+'/3DPW',
         train=False)
 
     print('##### Testing on 3DPW #####')

@@ -1,0 +1,57 @@
+
+HRNet-W48	w/o 3DPW	48.6	88.0	29.5	50.4	
+HRNet-W48	w/ 3DPW	41.8	71.3	29.8	47.1
+
+##### Testing on 3DPW #####
+100%|█████████████████████████████████████████████████████████████████████████████| 7103/7103 [12:46<00:00,  9.26it/s]
+Evaluation start...
+XYZ_14 PA-MPJPE: 42.960482 | MPJPE: 72.651177, x: 25.192257, y: 29.77, z: 50.592349
+
+Test result is saved at exp/test_3d_kpt.json
+Evaluation start...
+XYZ_24 PA-MPJPE: 47.504416 | MPJPE: 72.060613, x: 24.080248, y: 30.99, z: 49.656616
+
+Test result is saved at exp/test_3d_kpt.json
+PVE: 84.26452682731303
+##### gt 3dpw err: 42.96048207981891 #####
+##### Testing on Human3.6M #####
+100%|█████████████████████████████████████████████████████████████████████████████| 5169/5169 [08:33<00:00, 10.07it/s]
+Evaluation start...
+XYZ_14 Protocol 2 error (MPJPE) >> PA-MPJPE: 30.691349 | MPJPE: 48.298372, x: 15.308264, y: 25.81, z: 29.782540
+Directions: 44.68 Discussion: 46.14 Eating: 46.98 Greeting: 45.16 Phoning: 50.99 Posing: 42.80 Purchases: 45.16 Sitting: 57.56 SittingDown: 63.51 Smoking: 49.33 Photo: 50.41 Waiting: 41.86 Walking: 41.59 WalkDog: 50.88 WalkTogether: 44.56 
+Test result is saved at exp/test_3d_kpt.json
+Evaluation start...
+XYZ_24 Protocol 2 error (MPJPE) >> PA-MPJPE: 32.818067 | MPJPE: 48.652364, x: 14.910707, y: 25.09, z: 31.264078
+Directions: 45.67 Discussion: 46.45 Eating: 47.78 Greeting: 44.80 Phoning: 51.92 Posing: 43.57 Purchases: 44.67 Sitting: 58.67 SittingDown: 62.66 Smoking: 50.72 Photo: 51.12 Waiting: 40.95 Walking: 41.03 WalkDog: 50.73 WalkTogether: 44.08 
+Test result is saved at exp/test_3d_kpt.json
+##### gt h36m err: 30.691348804087824 #####
+
+
+
+2022/11/27
+HRNet-W48	w/o 3DPW	48.6	88.0	29.5	50.4	model	cfg
+HRNet-W48	w/ 3DPW	41.8	71.3	29.8	47.1
+复现             41.8    71.29  29.782275  47.103672
+
+
+Evaluation start...
+XYZ_14 PA-MPJPE: 41.819205 | MPJPE: 71.290511, x: 24.668059, y: 29.40, z: 49.618375
+
+Test result is saved at exp/test_3d_kpt.json
+Evaluation start...
+XYZ_24 PA-MPJPE: 46.257596 | MPJPE: 70.619405, x: 23.541903, y: 30.64, z: 48.569709
+
+Test result is saved at exp/test_3d_kpt.json
+PVE: 82.34663089183536
+##### gt 3dpw err: 41.81920537556542 #####
+##### Testing on Human3.6M #####
+100%|█████████████████████████████████████████████████████████████████████████████████████████████| 3231/3231 [10:45<00:00,  5.01it/s]
+Evaluation start...
+XYZ_14 Protocol 2 error (MPJPE) >> PA-MPJPE: 29.782275 | MPJPE: 47.103672, x: 14.751269, y: 25.20, z: 29.233752
+Directions: 43.64 Discussion: 45.36 Eating: 45.01 Greeting: 43.87 Phoning: 50.33 Posing: 41.18 Purchases: 44.26 Sitting: 55.80 SittingDown: 62.24 Smoking: 47.82 Photo: 48.94 Waiting: 40.77 Walking: 40.91 WalkDog: 49.95 WalkTogether: 43.70 
+Test result is saved at exp/test_3d_kpt.json
+Evaluation start...
+XYZ_24 Protocol 2 error (MPJPE) >> PA-MPJPE: 31.819007 | MPJPE: 47.561351, x: 14.355176, y: 24.54, z: 30.753531
+Directions: 44.67 Discussion: 45.91 Eating: 46.19 Greeting: 43.66 Phoning: 51.52 Posing: 41.88 Purchases: 43.68 Sitting: 57.03 SittingDown: 61.37 Smoking: 49.19 Photo: 49.72 Waiting: 39.88 Walking: 40.37 WalkDog: 49.97 WalkTogether: 43.21 
+Test result is saved at exp/test_3d_kpt.json
+##### gt h36m err: 29.782275327133778 #####

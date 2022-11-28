@@ -4,10 +4,10 @@ import os
 
 import cv2
 import joblib
-import numpy as np
-import torch.utils.data as data
 from pycocotools.coco import COCO
 
+import numpy as np
+import torch.utils.data as data
 from hybrik.utils.bbox import bbox_clip_xyxy, bbox_xywh_to_xyxy
 from hybrik.utils.pose_utils import pixel2cam, reconstruction_error
 from hybrik.utils.presets import (SimpleTransform3DSMPL,
@@ -80,7 +80,7 @@ class PW3D(data.Dataset):
                  lazy_import=False):
         self._cfg = cfg
 
-        self._ann_file = os.path.join(root, 'json', ann_file)
+        self._ann_file = os.path.join(root, 'ik_annots', ann_file)
         self._lazy_import = lazy_import
         self._root = root
         self._skip_empty = skip_empty
@@ -162,7 +162,6 @@ class PW3D(data.Dataset):
         label = {}
         for k in self.db.keys():
             label[k] = self.db[k][idx].copy()
-
         img = cv2.cvtColor(cv2.imread(img_path), cv2.COLOR_BGR2RGB)
 
         # transform ground truth into training label and apply data augmentation

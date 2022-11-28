@@ -71,7 +71,7 @@ class H36mSMPL(data.Dataset):
     def __init__(self,
                  cfg,
                  ann_file,
-                 root='./data/h36m',
+                 root='/home/ssw/code/dataset/h36m',
                  train=True,
                  skip_empty=True,
                  dpg=False,
@@ -80,7 +80,7 @@ class H36mSMPL(data.Dataset):
         self.protocol = cfg.DATASET.PROTOCOL
 
         self._ann_file = os.path.join(
-            root, 'annotations', ann_file + f'_protocol_{self.protocol}.json')
+            root, 'ik_annots', ann_file + f'_protocol_{self.protocol}.json')
         self._lazy_import = lazy_import
         self._root = root
         self._skip_empty = skip_empty
@@ -163,8 +163,12 @@ class H36mSMPL(data.Dataset):
         # load ground truth, including bbox, keypoints, image size
         label = {}
         for k in self.db.keys():
-            label[k] = self.db[k][idx].copy()
-
+            label[k] = self.db[k][idx].copy()        
+        # 如果该图片不在的话报错
+        if not os.path.exists(img_path):
+            raise IOError('h36m Image: {} not exists.'.format(img_path))
+        # if not os.path.exists(img_path):
+        #     print('h36m img_path is not exist: ', img_path)
         img = cv2.cvtColor(cv2.imread(img_path), cv2.COLOR_BGR2RGB)
         # img = load_image(img_path)
         # img = cv2.imread(img_path, cv2.IMREAD_COLOR | cv2.IMREAD_IGNORE_ORIENTATION)
@@ -219,7 +223,7 @@ class H36mSMPL(data.Dataset):
         det_bbox_set = {}
         if self._det_bbox_file is not None:
             bbox_list = json.load(open(os.path.join(
-                self._root, 'annotations', self._det_bbox_file + f'_protocol_{self.protocol}.json'), 'r'))
+                self._root, 'ik_annots', self._det_bbox_file + f'_protocol_{self.protocol}.json'), 'r'))
             for item in bbox_list:
                 image_id = item['image_id']
                 det_bbox_set[image_id] = item['bbox']
@@ -272,7 +276,7 @@ class H36mSMPL(data.Dataset):
 
             root_cam = np.array(ann['root_coord'])
 
-            abs_path = os.path.join(self._root, 'images', ann['file_name'])
+            abs_path = os.path.join(self._root, '3dcrowd_images', ann['file_name'])
 
             if 'angle_twist' in ann.keys():
                 twist = ann['angle_twist']

@@ -1,6 +1,7 @@
 import argparse
 import logging
 import os
+import time
 from types import MethodType
 
 import torch
@@ -12,30 +13,33 @@ parser = argparse.ArgumentParser(description='HybrIK Training')
 "----------------------------- Experiment options -----------------------------"
 parser.add_argument('--cfg',
                     help='experiment configure file name',
-                    required=True,
+                    # required=True,
+                    default='configs/256x192_adam_lr1e_3_res34_smpl_3d_cam_2x_mix_w_pw3d.yaml',
+
+                    # default='configs/256x192_adam_lr1e_3_hrw48_cam_2x_w_pw3d_3dhp.yaml',
                     type=str)
-parser.add_argument('--exp-id', default='default', type=str,
+parser.add_argument('--exp-id', default='test_3dpw', type=str,
                     help='Experiment ID')
 
 "----------------------------- General options -----------------------------"
-parser.add_argument('--nThreads', default=10, type=int,
+parser.add_argument('--nThreads', default=1, type=int,
                     help='Number of data loading threads')
 parser.add_argument('--snapshot', default=2, type=int,
                     help='How often to take a snapshot of the model (0 = never)')
 
-parser.add_argument('--rank', default=-1, type=int,
+parser.add_argument('--rank', default=0, type=int,
                     help='node rank for distributed training')
-parser.add_argument('--dist-url', default='tcp://192.168.1.219:23456', type=str,
+parser.add_argument('--dist-url', default='tcp://127.0.1.2:23456', type=str,
                     help='url used to set up distributed training')
 parser.add_argument('--dist-backend', default='nccl', type=str,
                     help='distributed backend')
-parser.add_argument('--launcher', choices=['none', 'pytorch', 'slurm', 'mpi'], default='none',
+parser.add_argument('--launcher', choices=['none', 'pytorch', 'slurm', 'mpi'], default='pytorch',
                     help='job launcher')
 
 "----------------------------- Training options -----------------------------"
 parser.add_argument('--sync', default=False, dest='sync',
                     help='Use Sync Batchnorm', action='store_true')
-parser.add_argument('--seed', default=23333, type=int,
+parser.add_argument('--seed', default=123123, type=int,
                     help='random seed')
 parser.add_argument('--dynamic-lr', default=False, dest='dynamic_lr',
                     help='dynamic lr scheduler', action='store_true')
@@ -88,6 +92,9 @@ logger.setLevel(logging.INFO)
 logger.addHandler(filehandler)
 logger.addHandler(streamhandler)
 
+logger.info('\n\n\n\n')
+logger.info(time.strftime('%Y-%m-%d_%H:%M:%S',time.localtime(int(round(time.time()*1000))/1000)))
+
 
 def epochInfo(self, set, idx, loss, acc):
     self.info('{set}-{idx:d} epoch | loss:{loss:.8f} | acc:{acc:.4f}'.format(
@@ -97,5 +104,9 @@ def epochInfo(self, set, idx, loss, acc):
         acc=acc
     ))
 
+def iterInfo(self, epoch, iter, total_iters, loss_desciption):
+    self.info('epoch: {}, iter: {}/{}, loss: {}'.format(epoch, iter, total_iters, loss_desciption))
+
 
 logger.epochInfo = MethodType(epochInfo, logger)
+logger.iterInfo = MethodType(iterInfo, logger)

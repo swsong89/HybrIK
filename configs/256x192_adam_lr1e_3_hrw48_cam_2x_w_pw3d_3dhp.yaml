@@ -1,14 +1,15 @@
 DATASET:
+  DATASET_DIR: '/home/ssw/code/dataset'
   DATASET: 'mix2_smpl_cam'
   SET_LIST:
-    - ROOT: './data/h36m/'
+    - ROOT: 'h36m'
       TEST_SET: 'Sample_20_test_Human36M_smpl'
       TRAIN_SET: 'Sample_trainmin_train_Human36M_smpl_leaf_twist'
-    - ROOT: './data/coco/'
+    - ROOT: 'coco'
       TRAIN_SET: 'train2017'
-    - ROOT: './data/3dhp/'
-      TRAIN_SET: 'train_v3'
-    - ROOT: './data/pw3d/'
+    - ROOT: 'mpi_inf_3dhp'
+      TRAIN_SET: 'train_v2'
+    - ROOT: '3DPW'
       TRAIN_SET: '3DPW_train_new'
   PROTOCOL: 2
   FLIP: True
@@ -20,7 +21,9 @@ DATASET:
   OCCLUSION: True
 MODEL:
   TYPE: 'HRNetSMPLCam'
-  HR_PRETRAINED: './pose_hrnet_w48_256x192.pth'
+  # HR_PRETRAINED: './pose_hrnet_w48_256x192.pth'
+  HR_PRETRAINED: ''
+
   PRETRAINED: ''
   # TRY_LOAD: ''
   TRY_LOAD: ''
@@ -65,8 +68,8 @@ LOSS:
 TEST:
   HEATMAP2COORD: 'coord'
 TRAIN:
-  WORLD_SIZE: 4
-  BATCH_SIZE: 36
+  WORLD_SIZE: 1
+  BATCH_SIZE: 8
   BEGIN_EPOCH: 0
   END_EPOCH: 200
   OPTIMIZER: 'adam'

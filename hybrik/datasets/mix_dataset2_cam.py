@@ -116,18 +116,22 @@ class MixDataset2Cam(data.Dataset):
             self.db0 = H36mSMPL(
                 cfg=cfg,
                 ann_file=cfg.DATASET.SET_LIST[0].TRAIN_SET,
+                root=cfg.DATASET.DATASET_DIR+'/h36m',
                 train=True)
             self.db1 = Mscoco(
                 cfg=cfg,
                 ann_file=f'person_keypoints_{cfg.DATASET.SET_LIST[1].TRAIN_SET}.json',
+                root=cfg.DATASET.DATASET_DIR+'/coco',
                 train=True)
             self.db2 = HP3D(
                 cfg=cfg,
                 ann_file=cfg.DATASET.SET_LIST[2].TRAIN_SET,
+                root=cfg.DATASET.DATASET_DIR+'/mpi_inf_3dhp',
                 train=True)
             self.db3 = PW3D(
                 cfg=cfg,
                 ann_file='3DPW_train_new.json',
+                root=cfg.DATASET.DATASET_DIR+'/3DPW',
                 train=True
             )
 
@@ -178,24 +182,54 @@ class MixDataset2Cam(data.Dataset):
     def __getitem__(self, idx):
         assert idx >= 0
         if self._train:
-            p = random.uniform(0, 1)
+        #     p = random.uniform(0, 1)
 
-            dataset_idx = bisect.bisect_right(self.cumulative_sizes, p)
+        #     dataset_idx = bisect.bisect_right(self.cumulative_sizes, p)
 
-            _db_len = self._subset_size[dataset_idx]
+        #     _db_len = self._subset_size[dataset_idx]
 
-            # last batch: random sampling
-            if idx >= _db_len * (self.tot_size // _db_len):
-                sample_idx = random.randint(0, _db_len - 1)
-            else:  # before last batch: use modular
-                sample_idx = idx % _db_len
+        #     # last batch: random sampling
+        #     if idx >= _db_len * (self.tot_size // _db_len):
+        #         sample_idx = random.randint(0, _db_len - 1)
+        #     else:  # before last batch: use modular
+        #         sample_idx = idx % _db_len
+        # else:
+        #     dataset_idx = 0
+        #     sample_idx = idx
+
+        # img, target, img_id, bbox = self._subsets[dataset_idx][sample_idx]
+        # 上边是原始的
+            # /home/ssw/code/dataset/mpi_inf_3dhp/images/S3_Seq2_video_1_F004831.jpg 有些图片romp 3dhp是没有的,比如这张
+            # 将直接获取数据改成while是因为romp 3dhp有些图片是没有的,而ik注释是有的,所以没有的时候重新随即获取图片
+            not_found = True
+            while not_found:
+                p = random.uniform(0, 1)
+
+                dataset_idx = bisect.bisect_right(self.cumulative_sizes, p)
+
+                _db_len = self._subset_size[dataset_idx]
+                # print('_db_len: ', _db_len)
+
+                # last batch: random sampling
+                if idx >= _db_len * (self.tot_size // _db_len):
+                    sample_idx = random.randint(0, _db_len - 1)
+                else:  # before last batch: use modular
+                    sample_idx = idx % _db_len
+                
+                try:
+                    img, target, img_id, bbox = self._subsets[dataset_idx][sample_idx]
+                    not_found = False
+                except Exception as e:
+                    a = 1
+                    # print('image dose not eixsts')
         else:
             dataset_idx = 0
             sample_idx = idx
+            img, target, img_id, bbox = self._subsets[dataset_idx][sample_idx]
 
-        img, target, img_id, bbox = self._subsets[dataset_idx][sample_idx]
 
-        if dataset_idx > 0 and dataset_idx < 3:
+        # print('dataset_idx: ', dataset_idx)
+        if dataset_idx > 0 and dataset_idx < 3:  # 0 h36m 1 coco 2 3dhp 3 3dpw
             # COCO, 3DHP
             label_jts_origin = target.pop('target')
             label_jts_mask_origin = target.pop('target_weight')

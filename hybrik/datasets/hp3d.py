@@ -1,12 +1,11 @@
 """MPI-INF-3DHP dataset."""
 import json
 import os
+import joblib
 
 import cv2
-import joblib
 import numpy as np
 import torch.utils.data as data
-
 from hybrik.utils.bbox import bbox_clip_xyxy, bbox_xywh_to_xyxy
 from hybrik.utils.pose_utils import (cam2pixel_matrix, pixel2cam_matrix,
                                      reconstruction_error)
@@ -84,7 +83,7 @@ class HP3D(data.Dataset):
     def __init__(self,
                  cfg,
                  ann_file,
-                 root='./data/3dhp',
+                 root='/home/ssw/code/dataset/mpi_inf_3dhp',
                  train=True,
                  skip_empty=True,
                  dpg=False,
@@ -92,7 +91,7 @@ class HP3D(data.Dataset):
         self._cfg = cfg
 
         self._ann_file = os.path.join(
-            root, f'annotation_mpi_inf_3dhp_{ann_file}.json')
+            root, 'ik_annots', f'annotation_mpi_inf_3dhp_{ann_file}.json')
         self._lazy_import = lazy_import
         self._root = root
         self._skip_empty = skip_empty
@@ -171,6 +170,8 @@ class HP3D(data.Dataset):
         label = {}
         for k in self.db.keys():
             label[k] = self.db[k][idx].copy()
+        # if not os.path.exists(img_path):
+        #     print('hp3d Image: {} not exists.'.format(img_path))
         img = cv2.cvtColor(cv2.imread(img_path), cv2.COLOR_BGR2RGB)
 
         # transform ground truth into training label and apply data augmentation
@@ -243,10 +244,17 @@ class HP3D(data.Dataset):
             joint_img = cam2pixel_matrix(joint_cam, intrinsic_param)
             joint_img[:, 2] = joint_img[:, 2] - joint_cam[self.root_idx, 2]
             joint_vis = np.ones((self.num_joints, 3))
+            # 数据集图片使用的是romp的,格式为image/S1_Seq1_video_0_F000001.jpg
+            # ik注释格式为 ann['file_name'] = 'S1/Seq1/images/S1_Seq1_V0/img_S1_Seq1_V0_000001.jpg'
+            # names = ['img', 'S1', 'Seq1', 'V0', '000001.jpg']
+            # /home/ssw/code/dataset/mpi_inf_3dhp/images/S3_Seq2_video_1_F004831.jpg 有些图片romp 3dhp是没有的,比如这张
+            names = ann['file_name'].split('/')[-1].split('_')  
+            file_name = names[1] + '_' +names[2]+ '_video_' + names[3].replace('V', '') + '_F' +  names[4]
+            abs_path = os.path.join(self._root, 'images', file_name)
 
             root_cam = joint_cam[self.root_idx]
 
-            abs_path = os.path.join(self._root, 'mpi_inf_3dhp_{}_set'.format('train' if self._train else 'test'), ann['file_name'])
+            # abs_path = os.path.join(self._root, 'mpi_inf_3dhp_{}_set'.format('train' if self._train else 'test'), ann['file_name'])
 
             items.append(abs_path)
             labels.append({

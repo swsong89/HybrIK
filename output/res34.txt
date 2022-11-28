@@ -1,0 +1,28 @@
+
+论文                       3DPW   h36m
+HybrIK (ResNet-34)        	48.8	34.5
+HybrIK (ResNet-34) w. 3DPW	45.3	36.3
+复现                        45.92  34.87
+##### Testing on 3DPW #####
+100%|█████████████████████████████████████████████████████████████████████████████| 4440/4440 [06:45<00:00, 10.96it/s]
+Evaluation start...
+XYZ_14 PA-MPJPE: 45.915663 | MPJPE: 74.110931, x: 27.141650, y: 28.64, z: 51.784909
+
+Test result is saved at exp/test_3d_kpt.json
+Evaluation start...
+XYZ_24 PA-MPJPE: 49.573008 | MPJPE: 72.607266, x: 24.934603, y: 29.36, z: 51.043792
+
+Test result is saved at exp/test_3d_kpt.json
+PVE: 86.92774588225393
+##### gt 3dpw err: 45.91566333850784 #####
+##### Testing on Human3.6M #####
+100%|█████████████████████████████████████████████████████████████████████████████| 3231/3231 [04:29<00:00, 11.98it/s]
+Evaluation start...
+XYZ_14 Protocol 2 error (MPJPE) >> PA-MPJPE: 34.873944 | MPJPE: 56.649117, x: 17.539234, y: 30.91, z: 34.780032
+Directions: 53.43 Discussion: 53.84 Eating: 55.80 Greeting: 55.92 Phoning: 60.63 Posing: 50.45 Purchases: 52.68 Sitting: 68.23 SittingDown: 69.58 Smoking: 55.31 Photo: 62.42 Waiting: 51.87 Walking: 46.65 WalkDog: 59.33 WalkTogether: 51.60 
+Test result is saved at exp/test_3d_kpt.json
+Evaluation start...
+XYZ_24 Protocol 2 error (MPJPE) >> PA-MPJPE: 36.519565 | MPJPE: 54.993162, x: 16.377640, y: 29.06, z: 34.932017
+Directions: 53.20 Discussion: 52.89 Eating: 53.94 Greeting: 53.42 Phoning: 59.12 Posing: 49.52 Purchases: 49.08 Sitting: 66.79 SittingDown: 65.69 Smoking: 55.07 Photo: 59.34 Waiting: 49.76 Walking: 45.01 WalkDog: 56.71 WalkTogether: 50.20 
+Test result is saved at exp/test_3d_kpt.json
+##### gt h36m err: 34.87394377333596 #####

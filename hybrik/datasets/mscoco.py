@@ -1,8 +1,8 @@
 """MS COCO Human keypoint dataset."""
 import os
+import joblib
 
 import cv2
-import joblib
 import numpy as np
 import torch.utils.data as data
 from pycocotools.coco import COCO
@@ -40,14 +40,14 @@ class Mscoco(data.Dataset):
     def __init__(self,
                  cfg,
                  ann_file,
-                 root='./data/coco',
+                 root='/home/ssw/code/dataset/coco',
                  train=True,
                  skip_empty=True,
                  dpg=False,
                  lazy_import=False):
 
         self._cfg = cfg
-        self._ann_file = os.path.join(root, 'annotations', ann_file)
+        self._ann_file = os.path.join(root, 'ik_annots', ann_file)
         self._lazy_import = lazy_import
         self._root = root
         self._skip_empty = skip_empty
@@ -173,7 +173,7 @@ class Mscoco(data.Dataset):
         image_ids = sorted(_coco.getImgIds())
         for entry in _coco.loadImgs(image_ids):
             dirname, filename = entry['coco_url'].split('/')[-2:]
-            abs_path = os.path.join(self._root, dirname, filename)
+            abs_path = os.path.join(self._root, 'images', dirname, filename)
             if not os.path.exists(abs_path):
                 raise IOError('Image: {} not exists.'.format(abs_path))
             label = self._check_load_keypoints(_coco, entry)
