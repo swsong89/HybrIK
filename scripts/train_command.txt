@@ -1,1 +1,0 @@
-CUDA_VISIBLE_DEVICES=3 sh scripts/sh_train_smpl_cam.sh

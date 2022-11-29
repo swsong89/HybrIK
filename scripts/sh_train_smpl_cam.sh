@@ -8,7 +8,7 @@ CONFIG='configs/256x192_adam_lr1e_3_hrw48_cam_2x_w_pw3d_3dhp.yaml'
 EXPID='test_3dpw'
 PORT=${3:-23458}
 HOST=$(hostname -i)
-CUDA_VISIBLE_DEVICES='0' python ./scripts/train_smpl_cam.py \
+CUDA_VISIBLE_DEVICES='3' python ./scripts/train_smpl_cam.py \
     --nThreads 8 \
     --launcher pytorch --rank 0 \
     --dist-url tcp://${HOST}:${PORT} \

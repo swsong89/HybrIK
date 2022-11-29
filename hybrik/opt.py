@@ -14,7 +14,7 @@ parser = argparse.ArgumentParser(description='HybrIK Training')
 parser.add_argument('--cfg',
                     help='experiment configure file name',
                     # required=True,
-                    default='configs/256x192_adam_lr1e_3_res34_smpl_3d_cam_2x_mix_w_pw3d.yaml',
+                    default='configs/256x192_adam_lr1e_3_hrw48_cam_2x_w_pw3d_3dhp.yaml',
 
                     # default='configs/256x192_adam_lr1e_3_hrw48_cam_2x_w_pw3d_3dhp.yaml',
                     type=str)
@@ -22,10 +22,10 @@ parser.add_argument('--exp-id', default='test_3dpw', type=str,
                     help='Experiment ID')
 
 "----------------------------- General options -----------------------------"
-parser.add_argument('--nThreads', default=1, type=int,
+parser.add_argument('--nThreads', default=4, type=int,
                     help='Number of data loading threads')
 parser.add_argument('--snapshot', default=2, type=int,
-                    help='How often to take a snapshot of the model (0 = never)')
+                    help='How often to take a snapshot of the model (0 = never)')  # 2表示2个epocg验证一次
 
 parser.add_argument('--rank', default=0, type=int,
                     help='node rank for distributed training')
@@ -66,10 +66,19 @@ parser.add_argument('--flip-shift',
                     help='flip shift',
                     action='store_true')
 parser.add_argument('--gpu',
-                    default='3',
+                    default='0',
                     type =str,
                     help='gpu')
 
+parser.add_argument('--print_freq',
+                    default='50',
+                    type =int,
+                    help='gpu')  # 打印的频率
+
+parser.add_argument('--test_interval',
+                    default=1,
+                    type =int,
+                    help='test_interval /10') 
 opt = parser.parse_args()
 cfg_file_name = opt.cfg.split('/')[-1]
 cfg = update_config(opt.cfg)
@@ -99,6 +108,8 @@ opt.work_dir = './exp/{}/{}-{}/'.format(cfg.DATASET.DATASET, cfg.FILE_NAME, opt.
 
 if not os.path.exists("./exp/{}/{}-{}".format(cfg.DATASET.DATASET, cfg_file_name, opt.exp_id)):
     os.makedirs("./exp/{}/{}-{}".format(cfg.DATASET.DATASET, cfg_file_name, opt.exp_id))
+    os.makedirs("./exp/{}/{}-{}/checkpoint".format(cfg.DATASET.DATASET, cfg_file_name, opt.exp_id))
+
 
 filehandler = logging.FileHandler(
     './exp/{}/{}-{}/training.log'.format(cfg.DATASET.DATASET, cfg_file_name, opt.exp_id))

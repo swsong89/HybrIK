@@ -111,7 +111,7 @@ class MixDataset2Cam(data.Dataset):
         self._train = train
         self.heatmap_size = cfg.MODEL.HEATMAP_SIZE
         self.bbox_3d_shape = getattr(cfg.MODEL, 'BBOX_3D_SHAPE', (2000, 2000, 2000))
-
+        #mix_dataset2_cam和mix_dataset_cam的区别是多了pw3d
         if train:
             self.db0 = H36mSMPL(
                 cfg=cfg,

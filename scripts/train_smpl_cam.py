@@ -33,6 +33,7 @@ def _init_fn(worker_id):
 
 def train(opt, train_loader, m, criterion, optimizer, writer, epoch_num):
     print('enter_train')
+    print('bathc_size: ', cfg.TRAIN.get('BATCH_SIZE'))  # cfg.TRAIN.BATCH_SIZE如果不存在会报错, cfg.TRAIN.get('BATCH_SIZE')不存在返回None
     loss_logger = DataLogger()
     acc_uvd_29_logger = DataLogger()
     acc_xyz_17_logger = DataLogger()
@@ -45,8 +46,9 @@ def train(opt, train_loader, m, criterion, optimizer, writer, epoch_num):
     if opt.log:
         train_loader = tqdm(train_loader, dynamic_ncols=True)
     print('enenumerate train')
-    print_freq = 50
     start_time = time.time()
+    iters = len(train_loader)
+    test_internal_iters = iters/10*opt.test_interval
     for j, (inps, labels, _, bboxes) in enumerate(train_loader):
         if isinstance(inps, list):
             inps = [inp.cuda(opt.gpu).requires_grad_() for inp in inps]
@@ -108,12 +110,15 @@ def train(opt, train_loader, m, criterion, optimizer, writer, epoch_num):
             train_loader.set_description(loss_desciption)
             # logging的频率
             
-            if j%print_freq == 0:
+            if j%opt.print_freq == 0:
                 time_print_freq = time.time() - start_time
                 start_time = time.time()
-                loss_desciption += '  time: {:.2f}s  total_time: {:.2f}m'.format(time_print_freq, len(train_loader)/print_freq*time_print_freq/60)
+                loss_desciption += '  time: {:.2f}s  total_time: {:.2f}m'.format(time_print_freq, len(train_loader)/opt.print_freq*time_print_freq/60)
                 logger.iterInfo(opt.epoch, j, len(train_loader), loss_desciption)
 
+        if j % test_internal_iters == 0: #保存的间隔
+            torch.save(m.module.state_dict(), './exp/{}/{}-{}/checkpoint/epoch_{}_iter_{}.pth'.format(cfg.DATASET.DATASET, cfg.FILE_NAME, opt.exp_id,
+                opt.epoch, j))
     
     if opt.log:
         train_loader.close()
@@ -327,16 +332,22 @@ def main_worker(gpu, opt, cfg):
         logger.epochInfo('Train', opt.epoch, loss, acc17)
 
         lr_scheduler.step()
-
+        # 每个epoch结束保存一下
+        torch.save(m.module.state_dict(), './exp/{}/{}-{}/checkpoint/epoch_{}.pth'.format(cfg.DATASET.DATASET, cfg.FILE_NAME, opt.exp_id,
+                    opt.epoch))
         if (i + 1) % opt.snapshot == 0:
-            if opt.log:
-                # Save checkpoint
-                torch.save(m.module.state_dict(), './exp/{}/{}-{}/model_{}.pth'.format(cfg.DATASET.DATASET, cfg.FILE_NAME, opt.exp_id, opt.epoch))
+            # if opt.log:
+            #     # Save checkpoint
+            #     torch.save(m.module.state_dict(), './exp/{}/{}-{}/model_{}.pth'.format(cfg.DATASET.DATASET, cfg.FILE_NAME, opt.exp_id, opt.epoch))
 
             # Prediction Test
             with torch.no_grad():
                 gt_tot_err_h36m = validate_gt(m, opt, cfg, gt_val_dataset_h36m, heatmap_to_coord)
                 gt_tot_err_3dpw = validate_gt(m, opt, cfg, gt_val_dataset_3dpw, heatmap_to_coord)
+
+                # Save val checkpoint
+                torch.save(m.module.state_dict(), './exp/{}/{}-{}/checkpoint/epoch_{}_h36m_{}_3dpw_{}.pth'.format(cfg.DATASET.DATASET, cfg.FILE_NAME, opt.exp_id,
+                            opt.epoch, gt_tot_err_h36m, gt_tot_err_3dpw))
                 if opt.log:
                     if gt_tot_err_h36m <= best_err_h36m:
                         best_err_h36m = gt_tot_err_h36m
