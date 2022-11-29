@@ -14,9 +14,10 @@ parser = argparse.ArgumentParser(description='HybrIK Training')
 parser.add_argument('--cfg',
                     help='experiment configure file name',
                     # required=True,
-                    default='configs/256x192_adam_lr1e_3_hrw48_cam_2x_w_pw3d_3dhp.yaml',
 
-                    # default='configs/256x192_adam_lr1e_3_hrw48_cam_2x_w_pw3d_3dhp.yaml',
+                    # default='configs/256x192_adam_lr1e_3_res34_smpl_3d_cam_2x_mix_w_pw3d.yaml',
+
+                    default='configs/256x192_adam_lr1e_3_hrw48_cam_2x_w_pw3d_3dhp_r9000p.yaml',
                     type=str)
 parser.add_argument('--exp-id', default='test_3dpw', type=str,
                     help='Experiment ID')
@@ -71,14 +72,25 @@ parser.add_argument('--gpu',
                     help='gpu')
 
 parser.add_argument('--print_freq',
-                    default='50',
+                    default='200',
                     type =int,
                     help='gpu')  # 打印的频率
 
 parser.add_argument('--test_interval',
-                    default=1,
+                    default=3,
                     type =int,
-                    help='test_interval /10') 
+                    help='test_interval /10')  # 一个epoch保存3次cache_model
+
+parser.add_argument('--ct',
+                    default=True,
+                    help='continue train',
+                    action='store_true')
+
+parser.add_argument('--tqdm',
+                    default=False,
+                    help='display tqdm',
+                    action='store_true')
+
 opt = parser.parse_args()
 cfg_file_name = opt.cfg.split('/')[-1]
 cfg = update_config(opt.cfg)
@@ -105,14 +117,14 @@ if cfg.TRAIN.WORLD_SIZE > num_gpu:
 opt.world_size = cfg.TRAIN.WORLD_SIZE
 opt.work_dir = './exp/{}/{}-{}/'.format(cfg.DATASET.DATASET, cfg.FILE_NAME, opt.exp_id)
 
-
-if not os.path.exists("./exp/{}/{}-{}".format(cfg.DATASET.DATASET, cfg_file_name, opt.exp_id)):
-    os.makedirs("./exp/{}/{}-{}".format(cfg.DATASET.DATASET, cfg_file_name, opt.exp_id))
-    os.makedirs("./exp/{}/{}-{}/checkpoint".format(cfg.DATASET.DATASET, cfg_file_name, opt.exp_id))
+os.makedirs(opt.work_dir, exist_ok=True)  # 创建log工作目录
+os.makedirs(os.path.join(opt.work_dir, 'checkpoint'), exist_ok=True)
 
 
-filehandler = logging.FileHandler(
-    './exp/{}/{}-{}/training.log'.format(cfg.DATASET.DATASET, cfg_file_name, opt.exp_id))
+
+
+
+filehandler = logging.FileHandler(os.path.join(opt.work_dir, 'training.log'))
 streamhandler = logging.StreamHandler()
 
 logger = logging.getLogger('')
@@ -133,7 +145,7 @@ def epochInfo(self, set, idx, loss, acc):
     ))
 
 def iterInfo(self, epoch, iter, total_iters, loss_desciption):
-    self.info('epoch: {}, iter: {}/{}, loss: {}'.format(epoch, iter, total_iters, loss_desciption))
+    self.info('epoch: {}, iter: {}/{}, {}'.format(epoch, iter, total_iters, loss_desciption))
 
 
 logger.epochInfo = MethodType(epochInfo, logger)

@@ -155,9 +155,11 @@ class MixDataset2Cam(data.Dataset):
             print('max_data_set', np.argmax(np.array(self._subset_size)))
             self.tot_size = (2 * max(self._subset_size))
             self.partition = [0.3, 0.4, 0.1, 0.2]
+            print('train dataset h36m: {}, coco: {}, 3dhp: {}, 3dpw: {}'.format(len(self.db0), len(self.db1), len(self.db2), len(self.db3)))
         else:
             self.tot_size = self._db0_size
             self.partition = [1]
+            print('test dataset h36m: {}'.format(len(self.db0)))
 
         self.cumulative_sizes = self.cumsum(self.partition)
 

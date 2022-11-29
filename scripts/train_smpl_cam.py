@@ -31,8 +31,7 @@ def _init_fn(worker_id):
     random.seed(opt.seed + worker_id)
 
 
-def train(opt, train_loader, m, criterion, optimizer, writer, epoch_num):
-    print('enter_train')
+def train(m, opt, train_loader, criterion, optimizer, writer, epoch, cfg, gt_val_dataset_3dpw, heatmap_to_coord):
     print('bathc_size: ', cfg.TRAIN.get('BATCH_SIZE'))  # cfg.TRAIN.BATCH_SIZE如果不存在会报错, cfg.TRAIN.get('BATCH_SIZE')不存在返回None
     loss_logger = DataLogger()
     acc_uvd_29_logger = DataLogger()
@@ -43,13 +42,15 @@ def train(opt, train_loader, m, criterion, optimizer, writer, epoch_num):
     hm_shape = (hm_shape[1], hm_shape[0], depth_dim)
     root_idx_17 = train_loader.dataset.root_idx_17
 
-    if opt.log:
-        train_loader = tqdm(train_loader, dynamic_ncols=True)
-    print('enenumerate train')
-    start_time = time.time()
+    # if opt.log:
+    #     train_loader = tqdm(train_loader, dynamic_ncols=True)
+    epoch_start_time = time.time()
+    iter_start_time = time.time()
+
     iters = len(train_loader)
     test_internal_iters = iters/10*opt.test_interval
-    for j, (inps, labels, _, bboxes) in enumerate(train_loader):
+    for iter, (inps, labels, _, bboxes) in enumerate(train_loader):
+
         if isinstance(inps, list):
             inps = [inp.cuda(opt.gpu).requires_grad_() for inp in inps]
         else:
@@ -99,7 +100,6 @@ def train(opt, train_loader, m, criterion, optimizer, writer, epoch_num):
 
         optimizer.step()
 
-        opt.trainIters += 1
         if opt.log:
             # TQDM 下面set_description是给tqdm显示打印的，变成loss: 8.06730000 | accuvd29: 0.0813 | acc17: 0.0800:   0%|▏                                                          | 254/78047 [00:40<3:26:42,  6.27it/s]
             # loss desciption loss: 7.54187632 | accuvd29: 0.0575 | acc17: 0.0000
@@ -107,18 +107,29 @@ def train(opt, train_loader, m, criterion, optimizer, writer, epoch_num):
                     loss=loss_logger.avg,
                     accuvd29=acc_uvd_29_logger.avg,
                     acc17=acc_xyz_17_logger.avg)
-            train_loader.set_description(loss_desciption)
+            # train_loader.set_description(loss_desciption)
             # logging的频率
             
-            if j%opt.print_freq == 0:
-                time_print_freq = time.time() - start_time
-                start_time = time.time()
-                loss_desciption += '  time: {:.2f}s  total_time: {:.2f}m'.format(time_print_freq, len(train_loader)/opt.print_freq*time_print_freq/60)
-                logger.iterInfo(opt.epoch, j, len(train_loader), loss_desciption)
+            if iter % opt.print_freq == 0:
+                time_print_freq = time.time() - iter_start_time  # 计算迭代打印频率时间
+                iter_start_time = time.time()
+                predict_time = len(train_loader)/opt.print_freq*time_print_freq/60  #预测整个epoch需要时间
+                epoch_used_time = (time.time() - epoch_start_time)/60  # epoch已经使用的时间
+                loss_desciption += '  time: {:.2f}s  predict_time: {:.2f}m used_time: {:.2f}m'.format(
+                                    time_print_freq, predict_time, epoch_used_time)
+                logger.iterInfo(epoch, iter, len(train_loader), loss_desciption)
 
-        if j % test_internal_iters == 0: #保存的间隔
-            torch.save(m.module.state_dict(), './exp/{}/{}-{}/checkpoint/epoch_{}_iter_{}.pth'.format(cfg.DATASET.DATASET, cfg.FILE_NAME, opt.exp_id,
-                opt.epoch, j))
+        if iter+1 % test_internal_iters == 0: #保存的间隔  # iter从0开始，避免刚开始就保存模型
+            cache_model_path =  opt.work_dir + '/checkpoint/cache_model.pth'
+            logger.info('=>  Saveing cache_model_path: ' + cache_model_path)
+            torch.save(m.module.state_dict(), cache_model_path)
+            # Prediction Test
+            # logger.info('=>  Start validate 3DPW dataset,  cache_model_path: ' + cache_model_path)
+            # with torch.no_grad():
+            #     gt_tot_err_3dpw = validate_gt(m, opt, cfg, gt_val_dataset_3dpw, heatmap_to_coord)
+            #     logger.info('=> epoch {} iter {} cache model 3dpw error {:.2f}'.format(epoch, iter, gt_tot_err_3dpw))
+                # Save val checkpoint
+                # torch.save(m.module.state_dict(), opt.work_dir + '/checkpoint/epoch_{}_3dpw_{:.2f}.pth'.format(epoch, gt_tot_err_3dpw))
     
     if opt.log:
         train_loader.close()
@@ -126,7 +137,7 @@ def train(opt, train_loader, m, criterion, optimizer, writer, epoch_num):
     return loss_logger.avg, acc_xyz_17_logger.avg
 
 
-def validate_gt(m, opt, cfg, gt_val_dataset, heatmap_to_coord, batch_size=24, pred_root=False):
+def validate_gt(m, opt, cfg, gt_val_dataset, heatmap_to_coord, batch_size=cfg.TRAIN.get('BATCH_SIZE')*3//4, pred_root=False):  # 3/4 batchsize在h36m和pw3d的情况下不会超出训练需要的内存
 
     gt_val_sampler = torch.utils.data.distributed.DistributedSampler(
         gt_val_dataset, num_replicas=opt.world_size, rank=opt.rank)
@@ -139,10 +150,12 @@ def validate_gt(m, opt, cfg, gt_val_dataset, heatmap_to_coord, batch_size=24, pr
     hm_shape = cfg.MODEL.get('HEATMAP_SIZE')
     hm_shape = (hm_shape[1], hm_shape[0])
 
-    if opt.log:
+    if opt.tqdm:
         gt_val_loader = tqdm(gt_val_loader, dynamic_ncols=True)
 
-    for inps, labels, img_ids, bboxes in gt_val_loader:
+    for val_iter, (inps, labels, img_ids, bboxes) in enumerate(gt_val_loader):
+        if val_iter % 500 == 0:
+            print('{} /{}'.format(val_iter), len(gt_val_loader))
         if isinstance(inps, list):
             inps = [inp.cuda(opt.gpu) for inp in inps]
         else:
@@ -217,7 +230,7 @@ def setup_seed(seed):
 def main():
     # print(opt)
     # opt = argparse.Namespace(board=True, cfg='configs/256x192_adam_lr1e_3_res34_smpl_3d_cam_2x_mix_w_pw3d.yaml', debug=False, dist_backend='nccl', dist_url='tcp://127.0.1.1:23456', dynamic_lr=False, exp_id='test_3dpw', exp_lr=False, flip_shift=False, flip_test=True, launcher='pytorch', map=True, nThreads=8, params=False, rank=0, seed=123123, snapshot=2, sync=False, work_dir='./exp/mix2_smpl_cam/256x192_adam_lr1e-3-res34_smpl_3d_cam_2x_mix_w_pw3d.yaml-test_3dpw/', world_size=0)
-    print(opt)
+    # print(opt)
     if opt.seed is not None:
         setup_seed(opt.seed)
 
@@ -249,6 +262,21 @@ def main_worker(gpu, opt, cfg):
     logger.info('******************************')
     logger.info(cfg)
     logger.info('******************************')
+
+    # continue train
+    if opt.ct:
+        checkpoint_path = os.path.join(opt.work_dir, 'checkpoint')
+        files = os.listdir(checkpoint_path)
+        try:
+            max_checkpoint_path = max(files)
+            begin_epoch = int(max_checkpoint_path.split('/')[-1].split('_')[1]) + 1  # epoch_1_iter_2,从epoch下一个开始
+            cfg.TRAIN.BEGIN_EPOCH = begin_epoch
+            cfg.MODEL.PRETRAINED = checkpoint_path + '/' + max_checkpoint_path
+            logger.info('Find newest checkpoint_path: ' + cfg.MODEL.PRETRAINED)
+
+        except Exception as e:
+            # logger.info('max_checkpoint_path: {}, unvalid'.format(checkpoint_path + '/' + max_checkpoint_path))
+            logger.info('Train begin epoch : ' + str(cfg.TRAIN.BEGIN_EPOCH) + ', pretrained_model path: ' + cfg.MODEL.PRETRAINED)
 
     opt.nThreads = int(opt.nThreads / num_gpu)
 
@@ -306,6 +334,7 @@ def main_worker(gpu, opt, cfg):
         gt_val_dataset_h36m = MixDatasetCam(
             cfg=cfg,
             train=False)
+        print('valid dataset h36m_len: {}'.format(len(gt_val_dataset_h36m)))
     else:
         raise NotImplementedError
 
@@ -314,28 +343,28 @@ def main_worker(gpu, opt, cfg):
         ann_file='3DPW_test_new.json',
         root=cfg.DATASET.DATASET_DIR+'/3DPW',
         train=False)
+    print('valid dataset 3dpw_len: {}'.format(len(gt_val_dataset_3dpw)))
 
-    opt.trainIters = 0
+
     best_err_h36m = 999
     best_err_3dpw = 999
 
-    for i in range(cfg.TRAIN.BEGIN_EPOCH, cfg.TRAIN.END_EPOCH):
-        opt.epoch = i
-        train_sampler.set_epoch(i)
+    for epoch in range(cfg.TRAIN.BEGIN_EPOCH, cfg.TRAIN.END_EPOCH):
+        train_sampler.set_epoch(epoch)
 
         current_lr = optimizer.state_dict()['param_groups'][0]['lr']
 
-        logger.info(f'############# Starting Epoch {opt.epoch} | LR: {current_lr} #############')
+        logger.info(f'############# Starting Epoch {epoch} | LR: {current_lr} #############')
 
         # Training
-        loss, acc17 = train(opt, train_loader, m, criterion, optimizer, writer, i)
-        logger.epochInfo('Train', opt.epoch, loss, acc17)
+        loss, acc17 = train(m, opt, train_loader, criterion, optimizer, writer, epoch,
+                            cfg, gt_val_dataset_3dpw, heatmap_to_coord)  # cfg, gt_val_dataset_h36m, heatmap_to_coord 为了test_internal添加的
+        logger.epochInfo('Train', epoch, loss, acc17)
 
         lr_scheduler.step()
         # 每个epoch结束保存一下
-        torch.save(m.module.state_dict(), './exp/{}/{}-{}/checkpoint/epoch_{}.pth'.format(cfg.DATASET.DATASET, cfg.FILE_NAME, opt.exp_id,
-                    opt.epoch))
-        if (i + 1) % opt.snapshot == 0:
+        torch.save(m.module.state_dict(), opt.work_dir + '/checkpoint/epoch_{}.pth'.format(epoch))
+        if (epoch + 1) % opt.snapshot == 0:
             # if opt.log:
             #     # Save checkpoint
             #     torch.save(m.module.state_dict(), './exp/{}/{}-{}/model_{}.pth'.format(cfg.DATASET.DATASET, cfg.FILE_NAME, opt.exp_id, opt.epoch))
@@ -346,31 +375,32 @@ def main_worker(gpu, opt, cfg):
                 gt_tot_err_3dpw = validate_gt(m, opt, cfg, gt_val_dataset_3dpw, heatmap_to_coord)
 
                 # Save val checkpoint
-                torch.save(m.module.state_dict(), './exp/{}/{}-{}/checkpoint/epoch_{}_h36m_{}_3dpw_{}.pth'.format(cfg.DATASET.DATASET, cfg.FILE_NAME, opt.exp_id,
-                            opt.epoch, gt_tot_err_h36m, gt_tot_err_3dpw))
+                val_checkpoint_path = '/checkpoint/epoch_{}_z_h36m_{:.2f}_3dpw_{:.2f}.pth'.format(epoch, gt_tot_err_h36m, gt_tot_err_3dpw)
+                torch.save(m.module.state_dict(), opt.work_dir + val_checkpoint_path)
+                logger.info('=>  Saveing val_checkpoint_path: ' + val_checkpoint_path)
                 if opt.log:
                     if gt_tot_err_h36m <= best_err_h36m:
                         best_err_h36m = gt_tot_err_h36m
-                        torch.save(m.module.state_dict(), './exp/{}/{}-{}/best_h36m_model.pth'.format(cfg.DATASET.DATASET, cfg.FILE_NAME, opt.exp_id))
+                        torch.save(m.module.state_dict(), opt.work_dir + '/best_h36m_model.pth')
                     if gt_tot_err_3dpw <= best_err_3dpw:
                         best_err_3dpw = gt_tot_err_3dpw
-                        torch.save(m.module.state_dict(), './exp/{}/{}-{}/best_3dpw_model.pth'.format(cfg.DATASET.DATASET, cfg.FILE_NAME, opt.exp_id))
+                        torch.save(m.module.state_dict(), opt.work_dir + '/best_3dpw_model.pth')
 
-                    logger.info(f'##### Epoch {opt.epoch} | h36m err: {gt_tot_err_h36m} / {best_err_h36m} | 3dpw err: {gt_tot_err_3dpw} / {best_err_3dpw} #####')
+                    logger.info(f'##### Epoch {epoch} | h36m err: {gt_tot_err_h36m} / {best_err_h36m} | 3dpw err: {gt_tot_err_3dpw} / {best_err_3dpw} #####')
 
         torch.distributed.barrier()  # Sync
 
-    torch.save(m.module.state_dict(), './exp/{}/{}-{}/final_DPG.pth'.format(cfg.DATASET.DATASET, cfg.FILE_NAME, opt.exp_id))
+    torch.save(m.module.state_dict(), opt.work_dir + '/final_DPG.pth')
 
 
 def preset_model(cfg):
     model = builder.build_sppe(cfg.MODEL)
 
     if cfg.MODEL.PRETRAINED:  # PRETRAINED相当于在这个模型的基础上再进行训练,而不是backbone pretrained_model
-        logger.info(f'Loading model from {cfg.MODEL.PRETRAINED}...')
+        logger.info(f'Loading pretrained model from path: {cfg.MODEL.PRETRAINED}...')
         model.load_state_dict(torch.load(cfg.MODEL.PRETRAINED, map_location='cpu'))
     elif cfg.MODEL.TRY_LOAD:  # try load就相当于是预训练加载,比如backbone是hr32,然后部分模块和backbone不一样,那么就加载部分共同的参数
-        logger.info(f'Loading model from {cfg.MODEL.TRY_LOAD}...')
+        logger.info(f'Loading try load model from {cfg.MODEL.TRY_LOAD}...')
         pretrained_state = torch.load(cfg.MODEL.TRY_LOAD, map_location='cpu')
         model_state = model.state_dict()
         pretrained_state = {k: v for k, v in pretrained_state.items()

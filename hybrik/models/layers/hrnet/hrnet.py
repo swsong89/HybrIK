@@ -570,7 +570,7 @@ class PoseHighResolutionNet(nn.Module):
             return feat
 
     def init_weights(self, pretrained=''):
-        logger.info('=> init weights from normal distribution')
+        logger.info('=> backbone hr init weights from normal distribution')
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 # nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
@@ -589,7 +589,7 @@ class PoseHighResolutionNet(nn.Module):
 
         if os.path.isfile(pretrained):
             pretrained_state_dict = torch.load(pretrained, map_location='cpu')
-            logger.info('=> loading pretrained model {}'.format(pretrained))
+            logger.info('=> backbone hr loading pretrained model {}'.format(pretrained))
 
             need_init_state_dict = {}
             for name, m in pretrained_state_dict.items():
@@ -598,7 +598,7 @@ class PoseHighResolutionNet(nn.Module):
                     need_init_state_dict[name] = m
             self.load_state_dict(need_init_state_dict, strict=False)
         elif pretrained:
-            logger.error('=> please download pre-trained models first!')
+            logger.error('=> please download pre-trained hr models first!')
             raise ValueError('{} is not exist!'.format(pretrained))
 
 
