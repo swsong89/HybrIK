@@ -93,7 +93,7 @@ det_model.eval()
 hybrik_model.eval()
 
 files = os.listdir(osp.join(project_dir, opt.img_dir))
-smpl_faces = torch.from_numpy(hybrik_model.smpl.faces.astype(np.int32))
+smpl_faces = torch.from_numpy(hybrik_model.smpl.faces.astype(np.int32))  # [13776, 3]
 
 if not os.path.exists(osp.join(project_dir, opt.out_dir)):
     os.makedirs(osp.join(project_dir, opt.out_dir))

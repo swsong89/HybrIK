@@ -210,7 +210,7 @@ class MixDataset2Cam(data.Dataset):
 
                 dataset_idx = bisect.bisect_right(self.cumulative_sizes, p)
 
-                _db_len = self._subset_size[dataset_idx]
+                _db_len = self._subset_size[dataset_idx]  # _subset_size [156094, 149813, 103620, 22735]
                 # print('_db_len: ', _db_len)
 
                 # last batch: random sampling

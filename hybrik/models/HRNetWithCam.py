@@ -19,9 +19,9 @@ def flip(x):
 
 def norm_heatmap(norm_type, heatmap, tau=5, sample_num=1):
     # Input tensor shape: [N,C,...]
-    shape = heatmap.shape
+    shape = heatmap.shape  # [1,29,262144]
     if norm_type == 'softmax':
-        heatmap = heatmap.reshape(*shape[:2], -1)
+        heatmap = heatmap.reshape(*shape[:2], -1)  # [1,29,262144]
         # global soft max
         heatmap = F.softmax(heatmap, 2)
         return heatmap.reshape(*shape)
@@ -177,23 +177,23 @@ class HRNetSMPLCam(nn.Module):
 
         return heatmaps
 
-    def forward(self, x, flip_test=False, **kwargs):
+    def forward(self, x, flip_test=False, **kwargs):  # x [1,256,256,3] flip_test=True, bbox [1,4] img_center [1,2]
         batch_size = x.shape[0]
 
         # x0 = self.preact(x)
-        out, x0 = self.preact(x)
+        out, x0 = self.preact(x)  # [1, 1856, 64, 64] [1, 2048]
         # print(out.shape)
-        out = out.reshape(batch_size, self.num_joints, self.depth_dim, self.height_dim, self.width_dim)
+        out = out.reshape(batch_size, self.num_joints, self.depth_dim, self.height_dim, self.width_dim)  # [1, 29, 64, 64, 64]
 
         if flip_test:
-            flip_x = flip(x)
+            flip_x = flip(x)  # 图片左右翻转[-0.9678, -0.9853, -1.0027,  ..., -1.3687, -1.4036, -1.4384] <- [-1.4384, -1.4036, -1.3687,  ..., -1.0027, -0.9853, -0.9678]
             flip_out, flip_x0 = self.preact(flip_x)
 
             # flip heatmap
-            flip_out = flip_out.reshape(batch_size, self.num_joints, self.depth_dim, self.height_dim, self.width_dim)
+            flip_out = flip_out.reshape(batch_size, self.num_joints, self.depth_dim, self.height_dim, self.width_dim)  # [1, 29, 64, 64, 64]
             flip_out = self.flip_heatmap(flip_out)
 
-            out = out.reshape((out.shape[0], self.num_joints, -1))
+            out = out.reshape((out.shape[0], self.num_joints, -1))  # [1, 29, 262144]
             flip_out = flip_out.reshape((flip_out.shape[0], self.num_joints, -1))
 
             heatmaps = norm_heatmap(self.norm_type, out)
@@ -209,18 +209,18 @@ class HRNetSMPLCam(nn.Module):
         # assert hypo_heatmaps.dim() == 4, heatmaps.shape
         # print(hypo_heatmaps.shape)
 
-        maxvals, _ = torch.max(heatmaps, dim=2, keepdim=True)
+        maxvals, _ = torch.max(heatmaps, dim=2, keepdim=True)  # [1, 29, 1]  _ [1,29,1]是262144的序号
 
         # print(out.sum(dim=2, keepdim=True))
         # heatmaps = out / out.sum(dim=2, keepdim=True)
 
-        heatmaps = heatmaps.reshape((heatmaps.shape[0], self.num_joints, self.depth_dim, self.height_dim, self.width_dim))
+        heatmaps = heatmaps.reshape((heatmaps.shape[0], self.num_joints, self.depth_dim, self.height_dim, self.width_dim))  # [1, 29, 64, 64, 64]
 
-        hm_x0 = heatmaps.sum((2, 3))  # (B, K, W)
-        hm_y0 = heatmaps.sum((2, 4))  # (B, K, H)
+        hm_x0 = heatmaps.sum((2, 3))  # (B, K, W)  # heatmaps 【B，K，D，H，W】
+        hm_y0 = heatmaps.sum((2, 4))  # (B, K, H)  # hm_zyz    [B, K, Z, Y, X]
         hm_z0 = heatmaps.sum((3, 4))  # (B, K, D)
 
-        range_tensor = torch.arange(hm_x0.shape[-1], dtype=torch.float32, device=hm_x0.device).unsqueeze(-1)
+        range_tensor = torch.arange(hm_x0.shape[-1], dtype=torch.float32, device=hm_x0.device).unsqueeze(-1)  # [64,1]
         # hm_x = hm_x0 * range_tensor
         # hm_y = hm_y0 * range_tensor
         # hm_z = hm_z0 * range_tensor
@@ -228,37 +228,37 @@ class HRNetSMPLCam(nn.Module):
         # coord_x = hm_x.sum(dim=2, keepdim=True)
         # coord_y = hm_y.sum(dim=2, keepdim=True)
         # coord_z = hm_z.sum(dim=2, keepdim=True)
-        coord_x = hm_x0.matmul(range_tensor)
-        coord_y = hm_y0.matmul(range_tensor)
+        coord_x = hm_x0.matmul(range_tensor)  # hm_x0 [1, 29, 64] range_tensor [64,1]  hm_x0.sum(-1) = [1,1,1,1...]
+        coord_y = hm_y0.matmul(range_tensor)  # coord_y [1, 29, 1]
         coord_z = hm_z0.matmul(range_tensor)
 
-        coord_x = coord_x / float(self.width_dim) - 0.5
+        coord_x = coord_x / float(self.width_dim) - 0.5  # coord_z坐标是像素,热力图是64像素，现在转换成以中心点为中心的百分比
         coord_y = coord_y / float(self.height_dim) - 0.5
         coord_z = coord_z / float(self.depth_dim) - 0.5
 
         #  -0.5 ~ 0.5
-        pred_uvd_jts_29 = torch.cat((coord_x, coord_y, coord_z), dim=2)
+        pred_uvd_jts_29 = torch.cat((coord_x, coord_y, coord_z), dim=2)  # [1, 29, 3]
 
-        x0 = x0.view(x0.size(0), -1)
-        init_shape = self.init_shape.expand(batch_size, -1)     # (B, 10,)
+        x0 = x0.view(x0.size(0), -1)  # [1, 2048]
+        init_shape = self.init_shape.expand(batch_size, -1)     # (B, 10,)  <- [10]
         init_cam = self.init_cam.expand(batch_size, -1)  # (B, 1,)
 
         xc = x0
 
-        delta_shape = self.decshape(xc)
-        pred_shape = delta_shape + init_shape
-        pred_phi = self.decphi(xc)
-        pred_camera = self.deccam(xc).reshape(batch_size, -1) + init_cam
-        sigma = self.decsigma(xc).reshape(batch_size, 29, 1).sigmoid()
+        delta_shape = self.decshape(xc)  # [1, 10] <- [1,2048]
+        pred_shape = delta_shape + init_shape  # beta
+        pred_phi = self.decphi(xc)  # [1,46]
+        pred_camera = self.deccam(xc).reshape(batch_size, -1) + init_cam  # [1,1]
+        sigma = self.decsigma(xc).reshape(batch_size, 29, 1).sigmoid()  # [1, 29,1]
 
-        pred_phi = pred_phi.reshape(batch_size, 23, 2)
+        pred_phi = pred_phi.reshape(batch_size, 23, 2)  # [1, 23, 2]
 
         if flip_test:
 
             flip_delta_shape = self.decshape(flip_x0)
             flip_pred_shape = flip_delta_shape + init_shape
             flip_pred_phi = self.decphi(flip_x0)
-            flip_pred_camera = self.deccam(flip_x0).reshape(batch_size, -1) + init_cam
+            flip_pred_camera = self.deccam(flip_x0).reshape(batch_size, -1) + init_cam  # 相机s
             flip_sigma = self.decsigma(flip_x0).reshape(batch_size, 29, 1).sigmoid()
 
             pred_shape = (pred_shape + flip_pred_shape) / 2
@@ -272,27 +272,27 @@ class HRNetSMPLCam(nn.Module):
             flip_sigma = self.flip_sigma(flip_sigma)
             sigma = (sigma + flip_sigma) / 2
 
-        camScale = pred_camera[:, :1].unsqueeze(1)
+        camScale = pred_camera[:, :1].unsqueeze(1)  # [1,1,1] 0.4902
         # camTrans = pred_camera[:, 1:].unsqueeze(1)
 
-        camDepth = self.focal_length / (self.input_size * camScale + 1e-9)
+        camDepth = self.focal_length / (self.input_size * camScale + 1e-9)  # 7.9685
 
         pred_xyz_jts_29 = torch.zeros_like(pred_uvd_jts_29)
         if 'bboxes' in kwargs.keys():
             bboxes = kwargs['bboxes']
             img_center = kwargs['img_center']
 
-            cx = (bboxes[:, 0] + bboxes[:, 2]) * 0.5
-            cy = (bboxes[:, 1] + bboxes[:, 3]) * 0.5
-            w = (bboxes[:, 2] - bboxes[:, 0])
-            h = (bboxes[:, 3] - bboxes[:, 1])
+            cx = (bboxes[:, 0] + bboxes[:, 2]) * 0.5  # 471.0548
+            cy = (bboxes[:, 1] + bboxes[:, 3]) * 0.5  # 134.1151
+            w = (bboxes[:, 2] - bboxes[:, 0])  # 51.5535
+            h = (bboxes[:, 3] - bboxes[:, 1])  # 51.5535  # w,h是bbox长宽
 
-            cx = cx - img_center[:, 0]
-            cy = cy - img_center[:, 1]
-            cx = cx / w
-            cy = cy / h
+            cx = cx - img_center[:, 0]  # cx=221.0548 <- img_center 471.0548【[250.0000, 187.5000]】
+            cy = cy - img_center[:, 1]  # -53.3848
+            cx = cx / w  # 4.2879
+            cy = cy / h  # -1.0355
 
-            bbox_center = torch.stack((cx, cy), dim=1).unsqueeze(dim=1)
+            bbox_center = torch.stack((cx, cy), dim=1).unsqueeze(dim=1)  # bbox_center是bbox_center到原始图像img_center的距离除上bbox_h
 
             pred_xyz_jts_29[:, :, 2:] = pred_uvd_jts_29[:, :, 2:].clone()  # unit: (self.depth_factor m)
             pred_xy_jts_29_meter = ((pred_uvd_jts_29[:, :, :2] + bbox_center) * self.input_size / self.focal_length) \
@@ -314,7 +314,7 @@ class HRNetSMPLCam(nn.Module):
         # camTrans = camera_root.squeeze(dim=1)[:, :2]
 
         # if not self.training:
-        pred_xyz_jts_29 = pred_xyz_jts_29 - pred_xyz_jts_29[:, [0]]
+        pred_xyz_jts_29 = pred_xyz_jts_29 - pred_xyz_jts_29[:, [0]]  # 相机坐标变成根节点坐标
 
         pred_xyz_jts_29_flat = pred_xyz_jts_29.reshape(batch_size, -1)
 
@@ -326,7 +326,7 @@ class HRNetSMPLCam(nn.Module):
             phis=pred_phi.type(self.smpl_dtype),
             global_orient=None,
             return_verts=True
-        )
+        )  # pred_xyz_jts_29 [1,29,3]根节点坐标系，单位m， pred_shape betas[1,10] phis [1,23,2]
         pred_vertices = output.vertices.float()
         #  -0.5 ~ 0.5
         pred_xyz_jts_24_struct = output.joints.float() / self.depth_factor

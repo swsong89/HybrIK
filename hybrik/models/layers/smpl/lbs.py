@@ -295,13 +295,13 @@ def hybrik(betas, global_orient, pose_skeleton, phis,
 
         Parameters
         ----------
-        betas : torch.tensor BxNB
+        betas : torch.tensor BxNB [1,10]
             The tensor of shape parameters
         global_orient : torch.tensor Bx3
             The tensor of global orientation
-        pose_skeleton : torch.tensor BxJ*3
+        pose_skeleton : torch.tensor BxJ*3 [1,29,3]
             The pose skeleton in (X, Y, Z) format
-        phis : torch.tensor BxJx2
+        phis : torch.tensor BxJx2 [1,23,2]
             The rotation on bone axis parameters
         v_template torch.tensor BxVx3
             The template mesh that will be deformed
@@ -338,7 +338,7 @@ def hybrik(betas, global_orient, pose_skeleton, phis,
     device = betas.device
 
     # 1. Add shape contribution
-    v_shaped = v_template + blend_shapes(betas, shapedirs)
+    v_shaped = v_template + blend_shapes(betas, shapedirs)  # 得到估计的静止mesh
 
     # 2. Get the rest joints
     # NxJx3 array
@@ -350,10 +350,10 @@ def hybrik(betas, global_orient, pose_skeleton, phis,
 
         leaf_number = [411, 2445, 5905, 3216, 6617]
         leaf_vertices = v_shaped[:, leaf_number].clone()
-        rest_J[:, 24:] = leaf_vertices
+        rest_J[:, 24:] = leaf_vertices  # 计算静止静止mesh的关节点位置
 
     # 3. Get the rotation matrics
-    if train:
+    if train:  # 由静止mesh的关节点位置,twist angle phis [1,23,2], 
         rot_mats, rotate_rest_pose = batch_inverse_kinematics_transform_naive(
             pose_skeleton, global_orient, phis,
             rest_J.clone(), children, parents, dtype=dtype, train=train,
@@ -362,11 +362,11 @@ def hybrik(betas, global_orient, pose_skeleton, phis,
         rot_mats, rotate_rest_pose = batch_inverse_kinematics_transform(
             pose_skeleton, global_orient, phis,
             rest_J.clone(), children, parents, dtype=dtype, train=train,
-            leaf_thetas=leaf_thetas)
+            leaf_thetas=leaf_thetas)  # [1,24,3,3] [1,29,3]
 
     test_joints = True
     if test_joints:
-        J_transformed, A = batch_rigid_transform(rot_mats, rest_J[:, :24].clone(), parents[:24], dtype=dtype)
+        J_transformed, A = batch_rigid_transform(rot_mats, rest_J[:, :24].clone(), parents[:24], dtype=dtype)  # [1,24,3]  [1,24,4,4]
     else:
         J_transformed = None
 
@@ -376,7 +376,7 @@ def hybrik(betas, global_orient, pose_skeleton, phis,
     ident = torch.eye(3, dtype=dtype, device=device)
     pose_feature = (rot_mats[:, 1:] - ident).view([batch_size, -1])
     pose_offsets = torch.matmul(pose_feature, posedirs) \
-        .view(batch_size, -1, 3)
+        .view(batch_size, -1, 3)   ## [1, 6890, 3] <- [1,207] [207, 20670]  207=23*3*3
 
     v_posed = pose_offsets + v_shaped
 
@@ -396,7 +396,7 @@ def hybrik(betas, global_orient, pose_skeleton, phis,
     verts = v_homo[:, :, :3, 0]
     J_from_verts_h36m = vertices2joints(J_regressor_h36m, verts)
 
-    return verts, J_transformed, rot_mats, J_from_verts_h36m
+    return verts, J_transformed, rot_mats, J_from_verts_h36m  # [1,6890,3]  [1,24,3] [1,24,3,3]  [1,17,3]
 
 
 def vertices2joints(J_regressor, vertices):
@@ -559,13 +559,13 @@ def batch_inverse_kinematics_transform(
 
     Parameters
     ----------
-    pose_skeleton : torch.tensor BxNx3
+    pose_skeleton : torch.tensor BxNx3  [1,29,3]
         Locations of estimated pose skeleton.
     global_orient : torch.tensor Bx1x3x3
         Tensor of global rotation matrices
-    phis : torch.tensor BxNx2
+    phis : torch.tensor BxNx2 [1,23,2]
         The rotation on bone axis parameters
-    rest_pose : torch.tensor Bx(N+1)x3
+    rest_pose : torch.tensor Bx(N+1)x3  [1,29,3]
         Locations of rest_pose. (Template Pose)
     children: dict
         The dictionary that describes the kinematic chidrens for the model
@@ -585,30 +585,30 @@ def batch_inverse_kinematics_transform(
     batch_size = pose_skeleton.shape[0]
     device = pose_skeleton.device
 
-    rel_rest_pose = rest_pose.clone()
+    rel_rest_pose = rest_pose.clone()  # 静止关节点位置
     rel_rest_pose[:, 1:] -= rest_pose[:, parents[1:]].clone()
-    rel_rest_pose = torch.unsqueeze(rel_rest_pose, dim=-1)
+    rel_rest_pose = torch.unsqueeze(rel_rest_pose, dim=-1)  # [1, 29, 3, 1] 每个关节点相对于父节点的位置
 
     # rotate the T pose
     rotate_rest_pose = torch.zeros_like(rel_rest_pose)
     # set up the root
     rotate_rest_pose[:, 0] = rel_rest_pose[:, 0]
 
-    rel_pose_skeleton = torch.unsqueeze(pose_skeleton.clone(), dim=-1).detach()
+    rel_pose_skeleton = torch.unsqueeze(pose_skeleton.clone(), dim=-1).detach()  # 关节点位置转相对关节点位置
     rel_pose_skeleton[:, 1:] = rel_pose_skeleton[:, 1:] - rel_pose_skeleton[:, parents[1:]].clone()
-    rel_pose_skeleton[:, 0] = rel_rest_pose[:, 0]
+    rel_pose_skeleton[:, 0] = rel_rest_pose[:, 0] # 目标pose的关节点相对物质
 
-    # the predicted final pose
+    # the predicted final pose 将目标pose关节点位置以根节点为中心移到静止mesh的根节点
     final_pose_skeleton = torch.unsqueeze(pose_skeleton.clone(), dim=-1)
     final_pose_skeleton = final_pose_skeleton - final_pose_skeleton[:, 0:1] + rel_rest_pose[:, 0:1]
 
-    rel_rest_pose = rel_rest_pose
-    rel_pose_skeleton = rel_pose_skeleton
-    final_pose_skeleton = final_pose_skeleton
-    rotate_rest_pose = rotate_rest_pose
+    rel_rest_pose = rel_rest_pose  # rest_pose的相对关节点位置，根节点静止pose根节点
+    rel_pose_skeleton = rel_pose_skeleton  # pose_skeletion的相对关节点位置，根节点是静止pose根节点
+    final_pose_skeleton = final_pose_skeleton  # pose_skeleton的根节点变成静止pose根节点
+    rotate_rest_pose = rotate_rest_pose  # [1, 29, 3, 1] rotate_rest_pose[0,0] = [[-0,0017], [-0.2204] [-0.0237]] 别的都是0
 
-    assert phis.dim() == 3
-    phis = phis / (torch.norm(phis, dim=2, keepdim=True) + 1e-8)
+    assert phis.dim() == 3  # phis[0,0]= [1.0928, 0.0787]
+    phis = phis / (torch.norm(phis, dim=2, keepdim=True) + 1e-8)  # phis[0,0]= [0.9974, 0.0718]
 
     # TODO
     if train:
@@ -619,7 +619,7 @@ def batch_inverse_kinematics_transform(
             rel_pose_skeleton.clone(), rel_rest_pose.clone(), parents, children, dtype)
 
     rot_mat_chain = [global_orient_mat]
-    rot_mat_local = [global_orient_mat]
+    rot_mat_local = [global_orient_mat]  # global_orient_mat [1, 3, 3]
     # leaf nodes rot_mats
     if leaf_thetas is not None:
         leaf_cnt = 0
@@ -682,7 +682,7 @@ def batch_inverse_kinematics_transform(
             rotate_rest_pose[:, i] = rotate_rest_pose[:, parents[i]] + torch.matmul(
                 rot_mat_chain[parents[i]],
                 rel_rest_pose[:, i]
-            )
+            )  #  [1,3,1] <- [1,3,3] [1,3,1]
             # (B, 3, 1)
             child_final_loc = final_pose_skeleton[:, children[i]] - rotate_rest_pose[:, i]
 
@@ -751,9 +751,9 @@ def batch_inverse_kinematics_transform(
             rot_mat_local.append(rot_mat)
 
     # (B, K + 1, 3, 3)
-    rot_mats = torch.stack(rot_mat_local, dim=1)
+    rot_mats = torch.stack(rot_mat_local, dim=1)  # [1, 24, 3, 3]
 
-    return rot_mats, rotate_rest_pose.squeeze(-1)
+    return rot_mats, rotate_rest_pose.squeeze(-1) # [1, 24, 3, 3] [1,29,3]
 
 
 def batch_inverse_kinematics_transform_naive(

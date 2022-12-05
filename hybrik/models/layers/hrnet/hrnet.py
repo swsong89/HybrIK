@@ -496,14 +496,14 @@ class PoseHighResolutionNet(nn.Module):
 
         return nn.Sequential(*modules), num_inchannels
 
-    def forward(self, x):
-        x = self.conv1(x)
+    def forward(self, x):  # x [1,3,256,256]
+        x = self.conv1(x)  # torch.Size([1, 64, 128, 128])
         x = self.bn1(x)
         x = self.relu(x)
-        x = self.conv2(x)
+        x = self.conv2(x)  # torch.Size([1, 64, 64, 64])
         x = self.bn2(x)
         x = self.relu(x)
-        x = self.layer1(x)
+        x = self.layer1(x)  # torch.Size([1, 256, 64, 64])
 
         x_list = []
         for i in range(self.stage2_cfg['NUM_BRANCHES']):
@@ -527,19 +527,19 @@ class PoseHighResolutionNet(nn.Module):
                 x_list.append(self.transition3[i](y_list[-1]))
             else:
                 x_list.append(y_list[i])
-        y_list = self.stage4(x_list)
+        y_list = self.stage4(x_list)  # [ [1,48,64,64], [1,96,32,32],[1,192,16,16], [1,384,8,8]]
 
         if self.generate_hm:
-            out_heatmap = self.final_layer(y_list[0])
+            out_heatmap = self.final_layer(y_list[0])  # [1, 1856, 64, 64] <- Conv2d(48, 1856) [1,48,64,64] 
 
             if self.generate_feat:
                 # Classification Head
-                y = self.incre_modules[0](y_list[0])
+                y = self.incre_modules[0](y_list[0])  # [1, 128, 64, 64]  <- [1,48,64,64]  incre_modules就单纯是bottleneck
                 for i in range(len(self.downsamp_modules)):
                     y = self.incre_modules[i + 1](y_list[i + 1]) + \
                         self.downsamp_modules[i](y)
 
-                y = self.final_feat_layer(y)
+                y = self.final_feat_layer(y)  # [1, 2048, 8, 8] <- [1, 1024, 8, 8]
 
                 if torch._C._get_tracing_state():
                     feat = y.flatten(start_dim=2).mean(dim=2)
@@ -547,7 +547,7 @@ class PoseHighResolutionNet(nn.Module):
                     feat = F.avg_pool2d(y, kernel_size=y.size()
                                         [2:]).view(y.size(0), -1)
 
-                return out_heatmap, feat
+                return out_heatmap, feat  #   [1, 1856, 64, 64] [1, 2048]
             else:
                 return out_heatmap
         else:

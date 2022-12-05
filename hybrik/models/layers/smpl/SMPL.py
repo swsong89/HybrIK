@@ -232,7 +232,7 @@ class SMPL_layer(nn.Module):
             ----------
             pose_skeleton: torch.tensor, optional, shape Bx(J*3)
                 It should be a tensor that contains joint locations in
-                (X, Y, Z) format. (default=None)
+                (X, Y, Z) format. (default=None) unit: meter
             betas: torch.tensor, optional, shape Bx10
                 It can used if shape parameters
                 `betas` are predicted from some external model.
@@ -247,7 +247,7 @@ class SMPL_layer(nn.Module):
             Returns
             -------
         '''
-        batch_size = pose_skeleton.shape[0]
+        batch_size = pose_skeleton.shape[0]  # 1
 
         if leaf_thetas is not None:
             leaf_thetas = leaf_thetas.reshape(batch_size * 5, 4)

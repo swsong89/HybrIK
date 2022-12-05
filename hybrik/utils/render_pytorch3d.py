@@ -5,11 +5,11 @@ import torch
 from scipy.spatial.transform import Rotation
 
 
-def render_mesh(vertices, faces, translation, focal_length, height, width, device=None):
+def render_mesh(vertices, faces, translation, focal_length, height, width, device=None):  # focal_length 201.38 height 51
     ''' Render the mesh under camera coordinates
-    vertices: (N_v, 3), vertices of mesh
-    faces: (N_f, 3), faces of mesh
-    translation: (3, ), translations of mesh or camera
+    vertices: (N_v, 3), vertices of mesh  [1,6890,3]
+    faces: (N_f, 3), faces of mesh  # [13776, 3]
+    translation: (3, ), translations of mesh or camera  # [1,3]
     focal_length: float, focal length of camera
     height: int, height of image
     width: int, width of image
@@ -22,7 +22,7 @@ def render_mesh(vertices, faces, translation, focal_length, height, width, devic
     bs = vertices.shape[0]
 
     # add the translation
-    vertices = vertices + translation[:, None, :]
+    vertices = vertices + translation[:, None, :]  # vertices是根节点坐标，然后转成相机坐标， translation是根节点在相机坐标的位置
 
     # upside down the mesh
     # rot = Rotation.from_rotvec(np.pi * np.array([0, 0, 1])).as_matrix().astype(np.float32)
@@ -33,7 +33,7 @@ def render_mesh(vertices, faces, translation, focal_length, height, width, devic
     vertices = torch.matmul(rot, vertices.transpose(1, 2)).transpose(1, 2)
 
     # Initialize each vertex to be white in color.
-    verts_rgb = torch.ones_like(vertices)  # (B, V, 3)
+    verts_rgb = torch.ones_like(vertices)  # (B, V, 3)  # [1,6890,3]
     textures = pytorch3d.renderer.TexturesVertex(verts_features=verts_rgb)
     mesh = pytorch3d.structures.Meshes(verts=vertices, faces=faces, textures=textures)
 
@@ -78,7 +78,7 @@ def render_mesh(vertices, faces, translation, focal_length, height, width, devic
     )
 
     # Do rendering
-    imgs = renderer(mesh)
+    imgs = renderer(mesh)  # [1, 375, 500, 4]
     return imgs
 
 

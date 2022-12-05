@@ -43,7 +43,7 @@ parser.add_argument('--gpu',
                     type=int)
 parser.add_argument('--img',
                     help='image ',
-                    default='demo/crowd.jpg',
+                    default='demo/crowd1.jpg',
                     type=str)
 parser.add_argument('--out-dir',
                     help='output folder',
@@ -130,7 +130,7 @@ dirname = os.path.dirname(img_path)
 basename = os.path.basename(img_path)
 
 # 得到bbox
-input_image = cv2.cvtColor(cv2.imread(img_path), cv2.COLOR_BGR2RGB)
+input_image = cv2.cvtColor(cv2.imread(img_path), cv2.COLOR_BGR2RGB)  # [375, 500, 3]
 image_bboxs = tracking_results[0]
 
 
@@ -140,27 +140,27 @@ focal = 1000.0
 output_mesh_vis = input_image.copy()
 output_ps_vis = input_image.copy()
 alpha = 0.9  # 原人体显示占比多少
-for bbox_idx in range(len(image_bboxs)):
+for bbox_idx in range(len(image_bboxs)):  # image_bboxs [11,5]
     # Run HybrIK
     # image_bboxs: [x1,y1,x2,y2,person_idx] image_bbox: [x1, y1, x2, y2]
     image_bbox = image_bboxs[bbox_idx][:4]
     pose_input, bbox, img_center = transformation.test_transform(
-        input_image, image_bbox)
-    pose_input = pose_input.to(opt.gpu)[None, :, :, :]
+        input_image, image_bbox)  # pose_input [1,3,256,256]由处理后的Bbox变成, bbox处理后的Bbox,长宽相同, img_center原始图像的
+    pose_input = pose_input.to(opt.gpu)[None, :, :, :]  # [1, 3, 256, 256]
     pose_output = hybrik_model(
         pose_input, flip_test=True,
         bboxes=torch.from_numpy(np.array(bbox)).to(pose_input.device).unsqueeze(0).float(),
         img_center=torch.from_numpy(img_center).to(pose_input.device).unsqueeze(0).float()
     )
     uv_29 = pose_output.pred_uvd_jts.reshape(29, 3)[:, :2]
-    transl = pose_output.transl.detach()
+    transl = pose_output.transl.detach()  # [ 8.6759, -2.1994,  7.9684]
 
     # Visualization
     # image = input_image.copy()
     # focal = 1000.0
-    bbox_xywh = xyxy2xywh(bbox)
+    bbox_xywh = xyxy2xywh(bbox)  # [471.05, 134.11, 51.55, 51.55]<- [445.27, 108.33, 496.83, 159.89]
 
-    focal_vis = focal / 256 * bbox_xywh[2]
+    focal_vis = focal / 256 * bbox_xywh[2]  # 201.38
 
     vertices = pose_output.pred_vertices.detach()
 
@@ -172,9 +172,9 @@ for bbox_idx in range(len(image_bboxs)):
         translation=transl_batch,
         focal_length=focal_vis, height=input_image.shape[0], width=input_image.shape[1])  # [1, 540, 960, 4]  4分别是rgb像素和mask
 
-    valid_mask_batch = (color_batch[:, :, :, [-1]] > 0)
-    image_vis_batch = color_batch[:, :, :, :3] * valid_mask_batch
-    image_vis_batch = (image_vis_batch * 255).cpu().numpy()  # [N,H,W,3] N多少个人
+    valid_mask_batch = (color_batch[:, :, :, [-1]] > 0) # 有图案的mask [1, 375, 500, 4]
+    image_vis_batch = color_batch[:, :, :, :3] * valid_mask_batch  # [1, 375, 500, 4] 画出图案
+    image_vis_batch = (image_vis_batch * 255).cpu().numpy()  # [N,H,W,3] N多少个人 转换成rgb
 
     # # 画出mesh 
     # output_mesh_vis = image

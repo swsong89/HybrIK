@@ -148,16 +148,16 @@ class SimpleTransform3DSMPLCam(object):
             self.lower_body_ids = dataset.lower_body_ids
 
     def test_transform(self, src, bbox):
-        xmin, ymin, xmax, ymax = bbox
+        xmin, ymin, xmax, ymax = bbox  # 464,477, 113,154  bbox 464.17, 113.493, 477.93, 154.73
         center, scale = _box_to_center_scale(
-            xmin, ymin, xmax - xmin, ymax - ymin, self._aspect_ratio, scale_mult=self._scale_mult)
+            xmin, ymin, xmax - xmin, ymax - ymin, self._aspect_ratio, scale_mult=self._scale_mult)  # 将bbox变成长宽一致，计算center,center到宽高的距离
         scale = scale * 1.0
 
         input_size = self._input_size
         inp_h, inp_w = input_size
-        trans = get_affine_transform(center, scale, 0, [inp_w, inp_h])
-        img = cv2.warpAffine(src, trans, (int(inp_w), int(inp_h)), flags=cv2.INTER_LINEAR)
-        bbox = _center_scale_to_box(center, scale)
+        trans = get_affine_transform(center, scale, 0, [inp_w, inp_h])  # [2,3]放射变换矩阵
+        img = cv2.warpAffine(src, trans, (int(inp_w), int(inp_h)), flags=cv2.INTER_LINEAR)  # [256,256]
+        bbox = _center_scale_to_box(center, scale)  # 445.27, 108.33, 496.83, 159.89, center一致，bbox由长宽不一致变成相同
 
         img = im_to_torch(img)
         # mean
@@ -172,7 +172,7 @@ class SimpleTransform3DSMPLCam(object):
 
         img_center = np.array([float(src.shape[1]) * 0.5, float(src.shape[0]) * 0.5])
 
-        return img, bbox, img_center
+        return img, bbox, img_center  #  img是由bbox变成[256,256] bbox的center不变，长宽变成一致，img_center是src center
 
     def _integral_target_generator(self, joints_3d, num_joints, patch_height, patch_width):
         target_weight = np.ones((num_joints, 3), dtype=np.float32)
