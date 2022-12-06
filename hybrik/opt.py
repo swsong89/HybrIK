@@ -30,7 +30,7 @@ parser.add_argument('--snapshot', default=2, type=int,
 
 parser.add_argument('--rank', default=0, type=int,
                     help='node rank for distributed training')
-parser.add_argument('--dist-url', default='tcp://127.0.1.2:23456', type=str,
+parser.add_argument('--dist-url', default='tcp://127.0.1.2:23458', type=str,
                     help='url used to set up distributed training')
 parser.add_argument('--dist-backend', default='nccl', type=str,
                     help='distributed backend')
@@ -72,7 +72,7 @@ parser.add_argument('--gpu',
                     help='gpu')
 
 parser.add_argument('--print_freq',
-                    default='200',
+                    default='20',
                     type =int,
                     help='gpu')  # 打印的频率
 

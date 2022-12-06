@@ -276,7 +276,7 @@ def main_worker(gpu, opt, cfg):
 
         except Exception as e:
             # logger.info('max_checkpoint_path: {}, unvalid'.format(checkpoint_path + '/' + max_checkpoint_path))
-            logger.info('Train begin epoch : ' + str(cfg.TRAIN.BEGIN_EPOCH) + ', pretrained_model path: ' + cfg.MODEL.PRETRAINED)
+            logger.info('New train begin epoch : ' + str(cfg.TRAIN.BEGIN_EPOCH) + ', pretrained_model path: ' + cfg.MODEL.PRETRAINED)
 
     opt.nThreads = int(opt.nThreads / num_gpu)
 
