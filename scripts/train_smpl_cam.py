@@ -121,7 +121,7 @@ def train(m, opt, train_loader, criterion, optimizer, writer, epoch, cfg, gt_val
 
         if iter+1 % test_internal_iters == 0: #保存的间隔  # iter从0开始，避免刚开始就保存模型
             cache_model_path =  opt.work_dir + '/checkpoint/cache_model.pth'
-            logger.info('=>  Saveing cache_model_path: ' + cache_model_path)
+            logger.info('=>  Saveing epoch_{}_iter{} cache_model_path: '.format(epoch, iter) + cache_model_path)
             torch.save(m.module.state_dict(), cache_model_path)
             # Prediction Test
             # logger.info('=>  Start validate 3DPW dataset,  cache_model_path: ' + cache_model_path)
@@ -131,8 +131,8 @@ def train(m, opt, train_loader, criterion, optimizer, writer, epoch, cfg, gt_val
                 # Save val checkpoint
                 # torch.save(m.module.state_dict(), opt.work_dir + '/checkpoint/epoch_{}_3dpw_{:.2f}.pth'.format(epoch, gt_tot_err_3dpw))
     
-    if opt.log:
-        train_loader.close()
+    # if opt.log:
+    #     train_loader.close()
 
     return loss_logger.avg, acc_xyz_17_logger.avg
 

@@ -72,7 +72,7 @@ parser.add_argument('--gpu',
                     help='gpu')
 
 parser.add_argument('--print_freq',
-                    default='20',
+                    default='200',
                     type =int,
                     help='gpu')  # 打印的频率
 
