@@ -72,12 +72,12 @@ parser.add_argument('--gpu',
                     help='gpu')
 
 parser.add_argument('--print_freq',
-                    default='200',
+                    default='100',
                     type =int,
                     help='gpu')  # 打印的频率
 
 parser.add_argument('--test_interval',
-                    default=3,
+                    default=2,
                     type =int,
                     help='test_interval /10')  # 一个epoch保存3次cache_model
 
@@ -89,6 +89,11 @@ parser.add_argument('--ct',
 parser.add_argument('--tqdm',
                     default=False,
                     help='display tqdm',
+                    action='store_true')
+
+parser.add_argument('--fast_eval',
+                    default=False,
+                    help='fast eval',
                     action='store_true')
 
 opt = parser.parse_args()
