@@ -48,7 +48,7 @@ def train(m, opt, train_loader, criterion, optimizer, writer, epoch, cfg, gt_val
     iter_start_time = time.time()
 
     iters = len(train_loader)
-    test_internal_iters = iters/10*opt.test_interval
+    test_internal_iters = iters//10*opt.test_interval
     for iter, (inps, labels, _, bboxes) in enumerate(train_loader):
 
         if isinstance(inps, list):
@@ -155,7 +155,7 @@ def validate_gt(m, opt, cfg, gt_val_dataset, heatmap_to_coord, batch_size=cfg.TR
 
     for val_iter, (inps, labels, img_ids, bboxes) in enumerate(gt_val_loader):
         if val_iter % 500 == 0:
-            print('{} /{}'.format(val_iter), len(gt_val_loader))
+            print('{} /{}'.format(val_iter, len(gt_val_loader)))
         if isinstance(inps, list):
             inps = [inp.cuda(opt.gpu) for inp in inps]
         else:
@@ -349,6 +349,18 @@ def main_worker(gpu, opt, cfg):
     best_err_h36m = 999
     best_err_3dpw = 999
 
+    if opt.fast_eval:
+        print('-----------fast eval----------------')
+        with torch.no_grad():
+            gt_tot_err_h36m = validate_gt(m, opt, cfg, gt_val_dataset_h36m, heatmap_to_coord)
+            gt_tot_err_3dpw = validate_gt(m, opt, cfg, gt_val_dataset_3dpw, heatmap_to_coord)
+
+            # Save val checkpoint
+            val_checkpoint_path = '/checkpoint/epoch_{}_z_h36m_{:.2f}_3dpw_{:.2f}.pth'.format(cfg.TRAIN.BEGIN_EPOCH, gt_tot_err_h36m, gt_tot_err_3dpw)
+            torch.save(m.module.state_dict(), opt.work_dir + val_checkpoint_path)
+            logger.info('=>  Saveing val_checkpoint_path: ' + val_checkpoint_path)
+            logger.info(f'##### Epoch {cfg.TRAIN.BEGIN_EPOCH} | h36m err: {gt_tot_err_h36m} / {best_err_h36m} | 3dpw err: {gt_tot_err_3dpw} / {best_err_3dpw} #####')
+
     for epoch in range(cfg.TRAIN.BEGIN_EPOCH, cfg.TRAIN.END_EPOCH):
         train_sampler.set_epoch(epoch)
 
@@ -363,7 +375,7 @@ def main_worker(gpu, opt, cfg):
 
         lr_scheduler.step()
         # 每个epoch结束保存一下
-        torch.save(m.module.state_dict(), opt.work_dir + '/checkpoint/epoch_{}.pth'.format(epoch))
+        # torch.save(m.module.state_dict(), opt.work_dir + '/checkpoint/epoch_{}.pth'.format(epoch))
         if (epoch + 1) % opt.snapshot == 0:
             # if opt.log:
             #     # Save checkpoint
