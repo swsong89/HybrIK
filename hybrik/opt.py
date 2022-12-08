@@ -77,7 +77,7 @@ parser.add_argument('--print_freq',
                     help='gpu')  # 打印的频率
 
 parser.add_argument('--test_interval',
-                    default=2,
+                    default=1,
                     type =int,
                     help='test_interval /10')  # 一个epoch保存3次cache_model
 
