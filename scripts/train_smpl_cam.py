@@ -119,7 +119,7 @@ def train(m, opt, train_loader, criterion, optimizer, writer, epoch, cfg, gt_val
                                     time_print_freq, predict_time, epoch_used_time)
                 logger.iterInfo(epoch, iter, len(train_loader), loss_desciption)
 
-        if iter+1 % test_internal_iters == 0: #保存的间隔  # iter从0开始，避免刚开始就保存模型
+        if (iter+1) % test_internal_iters == 0: #保存的间隔  # iter从0开始，避免刚开始就保存模型
             cache_model_path =  opt.work_dir + '/checkpoint/cache_model.pth'
             logger.info('=>  Saveing epoch_{}_iter{} cache_model_path: '.format(epoch, iter) + cache_model_path)
             torch.save(m.module.state_dict(), cache_model_path)
@@ -375,6 +375,7 @@ def main_worker(gpu, opt, cfg):
 
         lr_scheduler.step()
         # 每个epoch结束保存一下
+        # logger.info('saving '+ opt.work_dir + '/checkpoint/epoch_{}.pth'.format(epoch))
         # torch.save(m.module.state_dict(), opt.work_dir + '/checkpoint/epoch_{}.pth'.format(epoch))
         if (epoch + 1) % opt.snapshot == 0:
             # if opt.log:
