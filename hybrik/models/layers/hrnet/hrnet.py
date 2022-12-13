@@ -322,7 +322,7 @@ class PoseHighResolutionNet(nn.Module):
             pre_stage_channels, num_channels)
         self.stage4, pre_stage_channels = self._make_stage(
             self.stage4_cfg, num_channels, multi_scale_output=self.generate_feat)
-        self.Da = _DAHead(in_channels=self.stage4_cfg['NUM_CHANNELS'][0], nclass=self.stage4_cfg['NUM_CHANNELS'][0])
+        # self.Da = _DAHead(in_channels=self.stage4_cfg['NUM_CHANNELS'][0], nclass=self.stage4_cfg['NUM_CHANNELS'][0])
 
         # Classification Head
         if self.generate_feat:
@@ -336,7 +336,7 @@ class PoseHighResolutionNet(nn.Module):
                 kernel_size=extra['FINAL_CONV_KERNEL'],
                 stride=1,
                 padding=1 if extra['FINAL_CONV_KERNEL'] == 3 else 0
-            )
+            )  # 48 ->1856=29*64
 
         self.pretrained_layers = extra['PRETRAINED_LAYERS']
 
@@ -430,7 +430,7 @@ class PoseHighResolutionNet(nn.Module):
 
         return nn.ModuleList(transition_layers)
 
-    def _make_cls_layer(self, block, inplanes, planes, blocks, stride=1):
+    def _make_cls_layer(self, block, inplanes, planes, blocks, stride=1):  # inplanes 48  planes 32
         downsample = None
         if stride != 1 or inplanes != planes * block.expansion:
             downsample = nn.Sequential(
@@ -530,27 +530,27 @@ class PoseHighResolutionNet(nn.Module):
             else:
                 x_list.append(y_list[i])
         y_list = self.stage4(x_list)  # [ [1,48,64,64], [1,96,32,32],[1,192,16,16], [1,384,8,8]]
-        y_list[0] = self.Da(y_list[0])[0]  # list有3个，第一个是sum,第二个是c,第三个是p
+        # y_list[0] = self.Da(y_list[0])[0]  # list有3个，第一个是sum,第二个是c,第三个是p
 
         if self.generate_hm:
-            out_heatmap = self.final_layer(y_list[0])  # [1, 1856, 64, 64] <- Conv2d(48, 1856) [1,48,64,64] 
+            out_heatmap = self.final_layer(y_list[0])  # [1, 1856, 64, 64] <- Conv2d(48, 1856) [1,48,64,64]   1856=29*64
 
             if self.generate_feat:
                 # Classification Head
-                y = self.incre_modules[0](y_list[0])  # [1, 128, 64, 64]  <- [1,48,64,64]  incre_modules就单纯是bottleneck
+                y = self.incre_modules[0](y_list[0])  # [1, 128, 64, 64]  <- [1,48,64,64]  incre_modules就单纯是bottleneck,作用就是增加通道数
                 for i in range(len(self.downsamp_modules)):
                     y = self.incre_modules[i + 1](y_list[i + 1]) + \
                         self.downsamp_modules[i](y)
-
+                    #      [1,96,32,32]-> [1,256,32,32] + [1,128,64,64]->[1,256,32,32] -> [1,256,32,32] # incre_modules增加通道数, downsamp_modules降低分辨率
                 y = self.final_feat_layer(y)  # [1, 2048, 8, 8] <- [1, 1024, 8, 8]
 
-                if torch._C._get_tracing_state():
-                    feat = y.flatten(start_dim=2).mean(dim=2)
-                else:
-                    feat = F.avg_pool2d(y, kernel_size=y.size()
-                                        [2:]).view(y.size(0), -1)
+                # if torch._C._get_tracing_state():  # [1, 2048, 8, 8] -> [1,2048]
+                #     feat = y.flatten(start_dim=2).mean(dim=2)
+                # else:
+                #     feat = F.avg_pool2d(y, kernel_size=y.size()
+                #                         [2:]).view(y.size(0), -1)
 
-                return out_heatmap, feat  #   [1, 1856, 64, 64] [1, 2048]
+                return out_heatmap, y  #   [1, 1856, 64, 64] [1, 2048]
             else:
                 return out_heatmap
         else:

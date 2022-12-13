@@ -49,6 +49,41 @@ def norm_heatmap(norm_type, heatmap, tau=5, sample_num=1):
     else:
         raise NotImplementedError
 
+# class GraphConvBlock(nn.Module):
+#     def __init__(self, adj, dim_in, dim_out):  # adj=15, dim_in=2052, dim_out=128
+#         super(GraphConvBlock, self).__init__()
+#         self.adj = adj  # [15,15]
+#         self.vertex_num = adj.shape[0]  # [15]
+#         self.fcbn_list = nn.ModuleList([nn.Sequential(*[nn.Linear(dim_in, dim_out), nn.BatchNorm1d(dim_out)]) for _ in range(self.vertex_num)])
+
+#     def forward(self, feat):  # [1,15,2052]
+#         batch_size = feat.shape[0]  # 1
+
+#         # apply kernel for each vertex, 相当于取每个关节点[1,2048]进行一个卷积得到[1,128]
+#         feat = torch.stack([fcbn(feat[:,i,:]) for i,fcbn in enumerate(self.fcbn_list)],1)  # [1,15,128]= 15个[1,1,128] <- [1,1,2052] 卷积和[128,5012]，一个节点不同维度特征之间的信息加权和，然后需要多少维度做多少次。一层神经元数等于一层特征通道数，每个神经元特征就是HW，
+
+#         # apply adj
+#         adj = self.adj.cuda()[None, :, :].repeat(batch_size, 1, 1)  # TODO repeat函数是复制，【15，15】 1，1 ->【15，15】 1,2 -> [15,30]
+#         feat = torch.bmm(adj, feat)  # 【1，15，128】 <- [15,15], [1,15,128] 不同节点同纬度特征进行信息交换
+
+#         # apply activation function
+#         out = F.relu(feat)
+#         return out  # 【1，15，1288】
+
+
+# class GraphResBlock(nn.Module):
+#     def __init__(self, adj, dim):
+#         super(GraphResBlock, self).__init__()
+#         self.adj = adj  # 15
+#         self.graph_block1 = GraphConvBlock(adj, dim, dim)  # 15，128，128
+#         self.graph_block2 = GraphConvBlock(adj, dim, dim)
+
+#     def forward(self, feat):
+#         feat_out = self.graph_block1(feat)
+#         feat_out = self.graph_block2(feat_out)
+#         out = feat_out + feat
+#         return out
+
 
 @SPPE.register_module
 class HRNetSMPLCam(nn.Module):
@@ -91,6 +126,18 @@ class HRNetSMPLCam(nn.Module):
         self.root_idx_smpl = 0
 
         # mean shape
+        self.joint_num = 29  # 15
+        # self.graph_adj = torch.from_numpy(self.smpl.graph_adj).float()  # 15x15
+
+        # # graph convs  2048为C',即F'特征2048x8x8 4=3+1为P 3D +置信度
+        # self.graph_block = nn.Sequential(*[\
+        #     GraphConvBlock(self.graph_adj, 2048+4, 128),
+        #     GraphResBlock(self.graph_adj, 128),
+        #     GraphResBlock(self.graph_adj, 128),
+        #     GraphResBlock(self.graph_adj, 128),
+        #     GraphResBlock(self.graph_adj, 128)])
+
+
         init_shape = np.load('./model_files/h36m_mean_beta.npy')
         self.register_buffer(
             'init_shape',
@@ -100,7 +147,7 @@ class HRNetSMPLCam(nn.Module):
         self.register_buffer(
             'init_cam',
             torch.Tensor(init_cam).float())
-
+        self.dejoint = nn.Linear(self.joint_num*(2048+4), 2048)
         self.decshape = nn.Linear(2048, 10)
         self.decphi = nn.Linear(2048, 23 * 2)  # [cos(phi), sin(phi)]
         self.deccam = nn.Linear(2048, 1)
@@ -179,7 +226,7 @@ class HRNetSMPLCam(nn.Module):
 
     def forward(self, x, flip_test=False, **kwargs):  # x [1,256,256,3] flip_test=True, bbox [1,4] img_center [1,2]
         batch_size = x.shape[0]
-
+        # 关节点部分
         # x0 = self.preact(x)
         out, x0 = self.preact(x)  # [1, 1856, 64, 64] [1, 2048]
         # print(out.shape)
@@ -229,27 +276,55 @@ class HRNetSMPLCam(nn.Module):
         # coord_y = hm_y.sum(dim=2, keepdim=True)
         # coord_z = hm_z.sum(dim=2, keepdim=True)
         coord_x = hm_x0.matmul(range_tensor)  # hm_x0 [1, 29, 64] range_tensor [64,1]  hm_x0.sum(-1) = [1,1,1,1...]
-        coord_y = hm_y0.matmul(range_tensor)  # coord_y [1, 29, 1]
+        coord_y = hm_y0.matmul(range_tensor)  # coord_y [1, 29, 1]  32.0377, 32.0233
         coord_z = hm_z0.matmul(range_tensor)
 
-        coord_x = coord_x / float(self.width_dim) - 0.5  # coord_z坐标是像素,热力图是64像素，现在转换成以中心点为中心的百分比
-        coord_y = coord_y / float(self.height_dim) - 0.5
-        coord_z = coord_z / float(self.depth_dim) - 0.5
+        # 采样
+        scores = []
+        img_feat_joints = []
+        for j in range(self.joint_num ):
+            x = coord_x[:,j,0] / (self.width_dim - 1) * 2 - 1  # TODO *2-1是什么意思，前面的部分相当于该点在图片的x轴百分比 0.2892
+            y = coord_y[:,j,0] / (self.height_dim - 1) * 2 - 1  # 0.2934  # 
+            z = coord_z[:,j,0] / (self.depth_dim - 1) * 2 - 1  # 0.1429  [1,29,1] 之间-1~1
+            # 得到关节点置信度
+            grid = torch.stack((x, y, z), 1)[:, None, None, None, :]  # torch.stack((x, y, z), 1) [1,3] grid [1,1,1,1,3]
+            score_j = F.grid_sample(heatmaps[:, j, None, :, :, :], grid, align_corners=True)[:, 0, 0, 0, 0]  # score_j [1(batchsize)] 因为batch_size=1,(batch_size) oint_heatmap[:, j, None, :, :, :] [N,1,64,64,64] -> [N,1,1,1,1]
+            scores.append(score_j)  # TODO grid_sample
+
+            # 根据关节点在图像特征进行采样
+            img_feat = x0.float()
+            img_grid = torch.stack((x, y), 1)[:, None, None, :] # [N,1,1,2] <- [N,2]
+            img_feat_j = F.grid_sample(img_feat, img_grid, align_corners=True)[:, :, 0, 0]  # (batch_size, channel_dim) [1,2048]
+            img_feat_joints.append(img_feat_j)
+        scores = torch.stack(scores)  # (joint_num, batch_size)  [29,1]  [tensor,tensor...]15个tensor, stack默认0所以是[15,1]如果是1则是[1,15]
+        joint_score = scores.permute(1, 0)[:, :, None]  # (batch_size, joint_num, 1)  [1,29,1]
+        img_feat_joints = torch.stack(img_feat_joints) # (joint_num, batch_size, channel_dim) [15,1,2048]
+        img_feat_joints = img_feat_joints.permute(1, 0 ,2) # (batch_size, joint_num, channel_dim) [1,15,2048]
+        pred_uvd_jts_29 = torch.cat((coord_x, coord_y, coord_z), dim=2)  # 0, 64
+        feat = torch.cat((img_feat_joints, pred_uvd_jts_29, joint_score), dim=2)  # [1,15,2052(C'+3+1=2048+3+1=2052)]
+        feat = feat.view(x0.size(0), -1)  # [1, 59508]
+        feat = self.dejoint(feat)  # 【1，2048】<- [1, 59508] conv(59508,2048)
+
 
         #  -0.5 ~ 0.5
-        pred_uvd_jts_29 = torch.cat((coord_x, coord_y, coord_z), dim=2)  # [1, 29, 3]
+        # coord_x = coord_x / float(self.width_dim) - 0.5  # coord_z坐标是像素,热力图是64像素，现在转换成以中心点为中心的百分比
+        # coord_y = coord_y / float(self.height_dim) - 0.5  # 小数比例, 0-1
+        # coord_z = coord_z / float(self.depth_dim) - 0.5  # coord_x [0,64] -> [-0.5,0.5]
+        # pred_uvd_jts_29 = torch.cat((coord_x, coord_y, coord_z), dim=2)  # [1, 29, 3]
+        pred_uvd_jts_29 = pred_uvd_jts_29/64 - 0.5
 
-        x0 = x0.view(x0.size(0), -1)  # [1, 2048]
+        # mesh部分
+        # feat = feat.view(x0.size(0), -1)  # [1, 2048]
         init_shape = self.init_shape.expand(batch_size, -1)     # (B, 10,)  <- [10]
         init_cam = self.init_cam.expand(batch_size, -1)  # (B, 1,)
 
-        xc = x0
+        # xc = x0
 
-        delta_shape = self.decshape(xc)  # [1, 10] <- [1,2048]
+        delta_shape = self.decshape(feat)  # [1, 10] <- [1,2048]
         pred_shape = delta_shape + init_shape  # beta
-        pred_phi = self.decphi(xc)  # [1,46]
-        pred_camera = self.deccam(xc).reshape(batch_size, -1) + init_cam  # [1,1]
-        sigma = self.decsigma(xc).reshape(batch_size, 29, 1).sigmoid()  # [1, 29,1]
+        pred_phi = self.decphi(feat)  # [1,46] <- conv[2048,46] [1,2048]
+        pred_camera = self.deccam(feat).reshape(batch_size, -1) + init_cam  # [1,1]
+        sigma = self.decsigma(feat).reshape(batch_size, 29, 1).sigmoid()  # [1, 29,1]
 
         pred_phi = pred_phi.reshape(batch_size, 23, 2)  # [1, 23, 2]
 
@@ -305,9 +380,9 @@ class HRNetSMPLCam(nn.Module):
         else:
             pred_xyz_jts_29[:, :, 2:] = pred_uvd_jts_29[:, :, 2:].clone()  # unit: (self.depth_factor m)
             pred_xy_jts_29_meter = (pred_uvd_jts_29[:, :, :2] * self.input_size / self.focal_length) \
-                * (pred_xyz_jts_29[:, :, 2:] * self.depth_factor + camDepth)  # unit: m
+                * (pred_xyz_jts_29[:, :, 2:] * self.depth_factor + camDepth)  # unit: m  xy
 
-            pred_xyz_jts_29[:, :, :2] = pred_xy_jts_29_meter / self.depth_factor  # unit: (self.depth_factor m)
+            pred_xyz_jts_29[:, :, :2] = pred_xy_jts_29_meter / self.depth_factor  # unit: (self.depth_factor m)  z
 
             camera_root = pred_xyz_jts_29[:, 0, :] * self.depth_factor
             camera_root[:, 2] += camDepth[:, 0, 0]
