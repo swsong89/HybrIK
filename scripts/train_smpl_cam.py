@@ -131,8 +131,7 @@ def train(m, opt, train_loader, criterion, optimizer, writer, epoch, cfg, gt_val
                 # Save val checkpoint
                 # torch.save(m.module.state_dict(), opt.work_dir + '/checkpoint/epoch_{}_3dpw_{:.2f}.pth'.format(epoch, gt_tot_err_3dpw))
     
-    if opt.log:
-        train_loader.close()
+
 
     return loss_logger.avg, acc_xyz_17_logger.avg
 
