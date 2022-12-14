@@ -17,9 +17,14 @@ from hybrik.models import builder
 from hybrik.opt import cfg, logger, opt
 from hybrik.utils.env import init_dist
 from hybrik.utils.metrics import DataLogger, NullWriter, calc_coord_accuracy
-from hybrik.utils.transforms import get_func_heatmap_to_coord
+from hybrik.utils.transforms import get_func_heatmap_to_coord, torch_std_to_img, torch_to_im, cv_cropBoxInverse
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
+import cv2
+from hybrik.utils.vis import get_max_iou_box, get_one_box, vis_2d, xyxy2xywh
+from hybrik.utils.render_pytorch3d import render_mesh
+
+
 
 # torch.set_num_threads(64)
 num_gpu = torch.cuda.device_count()
@@ -30,6 +35,7 @@ def _init_fn(worker_id):
     np.random.seed(opt.seed + worker_id)
     random.seed(opt.seed + worker_id)
 
+smpl_faces = None
 
 def train(m, opt, train_loader, criterion, optimizer, writer, epoch, cfg, gt_val_dataset_3dpw, heatmap_to_coord):
     print('bathc_size: ', cfg.TRAIN.get('BATCH_SIZE'))  # cfg.TRAIN.BATCH_SIZE如果不存在会报错, cfg.TRAIN.get('BATCH_SIZE')不存在返回None
@@ -49,7 +55,8 @@ def train(m, opt, train_loader, criterion, optimizer, writer, epoch, cfg, gt_val
 
     iters = len(train_loader)
     test_internal_iters = iters//10*opt.test_interval
-    for iter, (inps, labels, _, bboxes) in enumerate(train_loader):
+
+    for iter, (inps, labels, idxs, img_paths, bboxes) in enumerate(train_loader):
 
         if isinstance(inps, list):
             inps = [inp.cuda(opt.gpu).requires_grad_() for inp in inps]
@@ -65,6 +72,104 @@ def train(m, opt, train_loader, criterion, optimizer, writer, epoch, cfg, gt_val
         depth_factor = labels.pop('depth_factor')
 
         output = m(inps, trans_inv=trans_inv, intrinsic_param=intrinsic_param, joint_root=root, depth_factor=depth_factor)
+
+        # vis 2d
+        for i in range(len(img_paths)):
+
+            # transofr_img vis
+            img = inps.detach().cpu()[0]
+            transfor_img_vis = torch_std_to_img(img)
+            transfor_img_vis = cv2.cvtColor(transfor_img_vis, cv2.COLOR_RGB2BGR)
+            cv2.imshow('transfor_img_vis', transfor_img_vis)
+
+
+            # # # origin img vis
+            origin_img= cv2.cvtColor(cv2.imread(img_paths[i]), cv2.COLOR_BGR2RGB)
+            origin_img_vis = cv2.cvtColor(origin_img, cv2.COLOR_RGB2BGR)
+            cv2.imshow('origin_img', origin_img_vis)
+
+
+            #origin_bbox_img
+            bbox_xywh = xyxy2xywh(bboxes[i])  # 580.9016, 1105.1338, 1609.7358, 1609.7358 <- [-223.9663,  300.2659, 1385.7695, 1910.0017]
+            uv_29 = labels['target_uvd_29'].detach().reshape(29, 3)[:, :2]
+            pts = uv_29 * bbox_xywh[2]
+            pts[:, 0] = pts[:, 0] + bbox_xywh[0]
+            pts[:, 1] = pts[:, 1] + bbox_xywh[1]
+            bbox_img = vis_2d(origin_img, bboxes[i], pts)
+            orgin_bbox_img = cv2.cvtColor(bbox_img, cv2.COLOR_RGB2BGR)
+            cv2.imshow('orgin_bbox_img', orgin_bbox_img)
+
+
+            #pred_bbox_img
+            bbox_xywh = xyxy2xywh(bboxes[i])  # 580.9016, 1105.1338, 1609.7358, 1609.7358 <- [-223.9663,  300.2659, 1385.7695, 1910.0017]
+            uv_29 = output.pred_uvd_jts.detach().reshape(29, 3)[:, :2]
+            pts = uv_29 * bbox_xywh[2]
+            pts[:, 0] = pts[:, 0] + bbox_xywh[0]
+            pts[:, 1] = pts[:, 1] + bbox_xywh[1]
+            bbox_img = vis_2d(origin_img, bboxes[i], pts)
+            bbox_vis = cv2.cvtColor(bbox_img, cv2.COLOR_RGB2BGR)
+            cv2.imshow('pred_bbox_img', bbox_vis)
+
+
+            # mesh_vis origin
+            focal = 1000.0
+            focal = focal/256*bbox_xywh[3]
+            transl = output.transl.detach()
+
+            vertices = output.pred_vertices.detach()
+
+            verts_batch = vertices
+            transl_batch = transl
+
+            color_batch = render_mesh(
+                vertices=verts_batch, faces=smpl_faces,
+                translation=transl_batch,
+                focal_length=focal, height=origin_img.shape[0], width=origin_img.shape[1])
+
+            valid_mask_batch = (color_batch[:, :, :, [-1]] > 0)
+            mesh_vis_batch = color_batch[:, :, :, :3] * valid_mask_batch
+            mesh_vis_batch = (mesh_vis_batch * 255).cpu().numpy()
+
+            color = mesh_vis_batch[0]
+            valid_mask = valid_mask_batch[0].cpu().numpy()
+            alpha = 0.9
+            mesh_img = alpha * color[:, :, :3] * valid_mask + (
+                1 - alpha) * origin_img * valid_mask + (1 - valid_mask) * origin_img
+
+            mesh_img = mesh_img.astype(np.uint8)
+            mesh_img_vis = cv2.cvtColor(mesh_img, cv2.COLOR_RGB2BGR)
+            cv2.imshow('mesh_img_origin_vis', mesh_img_vis)
+
+
+            # mesh_vis 256
+            focal = 1000.0
+            transl = output.transl.detach()
+
+            vertices = output.pred_vertices.detach()
+
+            verts_batch = vertices
+            transl_batch = transl
+
+            color_batch = render_mesh(
+                vertices=verts_batch, faces=smpl_faces,
+                translation=transl_batch,
+                focal_length=focal, height=transfor_img_vis.shape[0], width=transfor_img_vis.shape[1])
+
+            valid_mask_batch = (color_batch[:, :, :, [-1]] > 0)
+            mesh_vis_batch = color_batch[:, :, :, :3] * valid_mask_batch
+            mesh_vis_batch = (mesh_vis_batch * 255).cpu().numpy()
+
+            color = mesh_vis_batch[0]
+            valid_mask = valid_mask_batch[0].cpu().numpy()
+            alpha = 0.9
+            mesh_img = alpha * color[:, :, :3] * valid_mask + (
+                1 - alpha) * transfor_img_vis * valid_mask + (1 - valid_mask) * transfor_img_vis
+
+            mesh_img = mesh_img.astype(np.uint8)
+            mesh_img_vis = cv2.cvtColor(mesh_img, cv2.COLOR_RGB2BGR)
+            cv2.imshow('mesh_img_vis', mesh_img_vis)
+            key = cv2.waitKey(0)  # 等待按键命令, 1000ms 后自动关闭
+            cv2.destroyAllWindows()
 
         loss = criterion(output, labels)
 
@@ -289,6 +394,8 @@ def main_worker(gpu, opt, cfg):
         logger.info(macs, params)
 
     m.cuda(opt.gpu)
+    global smpl_faces
+    smpl_faces = torch.from_numpy(m.smpl.faces.astype(np.int32))
     m = torch.nn.parallel.DistributedDataParallel(m, device_ids=[opt.gpu])
 
     criterion = builder.build_loss(cfg.LOSS).cuda(opt.gpu)

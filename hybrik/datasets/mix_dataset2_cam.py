@@ -220,7 +220,7 @@ class MixDataset2Cam(data.Dataset):
                     sample_idx = idx % _db_len
                 
                 try:
-                    img, target, img_id, bbox = self._subsets[dataset_idx][sample_idx]
+                    img, target, img_id, img_path, bbox = self._subsets[dataset_idx][sample_idx]
                     not_found = False
                 except Exception as e:
                     a = 1
@@ -228,7 +228,7 @@ class MixDataset2Cam(data.Dataset):
         else:
             dataset_idx = 0
             sample_idx = idx
-            img, target, img_id, bbox = self._subsets[dataset_idx][sample_idx]
+            img, target, img_id, img_path, bbox = self._subsets[dataset_idx][sample_idx]
 
 
         # print('dataset_idx: ', dataset_idx)
@@ -303,4 +303,4 @@ class MixDataset2Cam(data.Dataset):
             assert set(target.keys()).issubset(self.data_domain), (set(target.keys()) - self.data_domain, self.data_domain - set(target.keys()),)
         target.pop('type')
 
-        return img, target, img_id, bbox
+        return img, target, img_id, img_path, bbox
