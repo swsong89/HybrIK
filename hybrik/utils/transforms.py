@@ -108,9 +108,26 @@ def torch_to_im(img):
 
     """
     img = to_numpy(img)
-    img = np.transpose(img, (1, 2, 0))  # C*H*W
+    img = np.transpose(img, (1, 2, 0))  # C*H*W -> HWC
     return img
 
+def torch_std_to_img(img):
+    # std
+    img[0].mul_(0.225)
+    img[1].mul_(0.224)
+    img[2].mul_(0.229)
+
+    # mean
+    img[0].sub_(-0.406)
+    img[1].sub_(-0.457)
+    img[2].sub_(-0.480)
+
+
+
+    img = torch_to_im(img)
+    # img = img*255
+    img.astype(np.uint8)
+    return img
 
 def load_image(img_path):
     # H x W x C => C x H x W

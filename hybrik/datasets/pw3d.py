@@ -12,7 +12,7 @@ from hybrik.utils.bbox import bbox_clip_xyxy, bbox_xywh_to_xyxy
 from hybrik.utils.pose_utils import pixel2cam, reconstruction_error
 from hybrik.utils.presets import (SimpleTransform3DSMPL,
                                   SimpleTransform3DSMPLCam)
-
+from hybrik.utils.vis import get_max_iou_box, get_one_box, vis_2d, vis_bbox, xyxy2xywh
 
 class PW3D(data.Dataset):
     """ 3DPW dataset.
@@ -161,15 +161,29 @@ class PW3D(data.Dataset):
         # load ground truth, including bbox, keypoints, image size
         label = {}
         for k in self.db.keys():
-            label[k] = self.db[k][idx].copy()
-        img = cv2.cvtColor(cv2.imread(img_path), cv2.COLOR_BGR2RGB)
+            label[k] = self.db[k][idx].copy()  # bbox[ 418.08163452,  550.03210449,  743.72155762, 1660.23535156]
+        img = cv2.cvtColor(cv2.imread(img_path), cv2.COLOR_BGR2RGB)  # bbox xyxy  1920, 1080, 3
+
+        # bbox_img = vis_bbox(img, label['bbox'])
+        # cv2.imshow('bbox_img', bbox_img)
+        # bbox_xywh = xyxy2xywh(label['bbox'])
+        # joints_img = vis_2d(img, label['bbox'], label['joint_img_29'][:, :2])
+        # joints_img_vis = cv2.cvtColor(joints_img, cv2.COLOR_RGB2BGR)
+        # cv2.imshow('joints_img_vis', joints_img_vis)
+        # key = cv2.waitKey(0)  # 等待按键命令, 1000ms 后自动关闭
+        # cv2.destroyAllWindows()
+
 
         # transform ground truth into training label and apply data augmentation
         target = self.transformation(img, label)
+        # transor_img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+        # cv2.imshow('transor_img', transor_img)
+        # key = cv2.waitKey(0)  # 等待按键命令, 1000ms 后自动关闭
+        # cv2.destroyAllWindows()
 
         img = target.pop('image')
-        bbox = target.pop('bbox')
-        return img, target, img_id, bbox
+        bbox = target.pop('bbox')  # [-223.9663,  300.2659, 1385.7695, 1910.0017]
+        return img, target, img_id, img_path, bbox
 
     def __len__(self):
         return len(self.db['img_path'])

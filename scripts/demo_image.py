@@ -13,7 +13,7 @@ from hybrik.models import builder
 from hybrik.utils.config import update_config
 from hybrik.utils.presets import SimpleTransform3DSMPLCam
 from hybrik.utils.render_pytorch3d import render_mesh
-from hybrik.utils.vis import get_one_box
+from hybrik.utils.vis import get_one_box, vis_bbox
 from torchvision import transforms as T
 from torchvision.models.detection import fasterrcnn_resnet50_fpn
 from tqdm import tqdm
@@ -120,6 +120,19 @@ for file in tqdm(files):
         # bbox: [x1, y1, x2, y2]
         pose_input, bbox, img_center = transformation.test_transform(
             input_image, tight_bbox)
+
+        # vis bbox
+        # tm_img = input_image.copy()
+        # vis_tight_bbox = vis_bbox(tm_img, tight_bbox)
+        # vis_tight_bbox = cv2.cvtColor(vis_tight_bbox, cv2.COLOR_RGB2BGR)
+        # cv2.imshow('vis_tight_bbox', vis_tight_bbox)  # [212.8205337524414, 209.7485237121582, 113.71342468261719, 240.28084564208984]
+
+        # tm_img = input_image.copy()
+        # vis_bbox1 = vis_bbox(tm_img, bbox)
+        # vis_bbox1 = cv2.cvtColor(vis_bbox1, cv2.COLOR_RGB2BGR)
+        # cv2.imshow('vis_bbox1', vis_bbox1)  # [212.82052612304688, 209.74851989746094, 300.35107421875, 300.35107421875]
+        # key = cv2.waitKey(0)  # 等待按键命令, 1000ms 后自动关闭
+        # cv2.destroyAllWindows()
         pose_input = pose_input.to(opt.gpu)[None, :, :, :]
         pose_output = hybrik_model(
             pose_input, flip_test=True,
@@ -161,4 +174,5 @@ for file in tqdm(files):
         image_vis = cv2.cvtColor(image_vis, cv2.COLOR_RGB2BGR)
 
         res_path = os.path.join(opt.out_dir, basename)
+        print('saving: ', res_path)
         cv2.imwrite(res_path, image_vis)

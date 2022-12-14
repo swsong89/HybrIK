@@ -124,7 +124,7 @@ class Mscoco(data.Dataset):
 
         img = target.pop('image')
         bbox = target.pop('bbox')
-        return img, target, img_id, bbox
+        return img, target, img_id, img_path, bbox
 
     def __len__(self):
         return len(self.db['img_path'])

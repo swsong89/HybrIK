@@ -2,6 +2,14 @@ import cv2
 import numpy as np
 import PIL.Image as pil_img
 
+def xyxy2xywh(bbox):
+    x1, y1, x2, y2 = bbox
+
+    cx = (x1 + x2) / 2
+    cy = (y1 + y2) / 2
+    w = x2 - x1
+    h = y2 - y1
+    return [cx, cy, w, h]
 
 def get_one_box(det_output, thrd=0.9):
     max_area = 0
