@@ -176,7 +176,7 @@ class MixDataset(data.Dataset):
             dataset_idx = 0
             sample_idx = idx
 
-        img, target, img_id, bbox = self._subsets[dataset_idx][sample_idx]
+        img, target, img_id, img_path, bbox = self._subsets[dataset_idx][sample_idx]
 
         if dataset_idx > 0:
             # COCO, 3DHP
@@ -239,4 +239,4 @@ class MixDataset(data.Dataset):
             assert set(target.keys()).issubset(self.data_domain), (set(target.keys()) - self.data_domain, self.data_domain - set(target.keys()),)
         target.pop('type')
 
-        return img, target, img_id, bbox
+        return img, target, img_id, img_path, bbox

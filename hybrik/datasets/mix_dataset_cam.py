@@ -201,7 +201,7 @@ class MixDatasetCam(data.Dataset):
             dataset_idx = 0
             sample_idx = idx
 
-        img, target, img_id, bbox = self._subsets[dataset_idx][sample_idx]
+        img, target, img_id, img_path, bbox = self._subsets[dataset_idx][sample_idx]
 
         if dataset_idx > 0 and dataset_idx < 3:
             # COCO, 3DHP
@@ -279,4 +279,4 @@ class MixDatasetCam(data.Dataset):
 
         target['dataset_idx'] = dataset_idx
 
-        return img, target, img_id, bbox
+        return img, target, img_id, img_path, bbox

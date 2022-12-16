@@ -71,14 +71,14 @@ parser.add_argument('--gpu',
                     help='gpu')
 
 parser.add_argument('--print_freq',
-                    default='1',
+                    default='100',
                     type =int,
                     help='gpu')  # 打印的频率
 
-parser.add_argument('--test_interval',
-                    default=1,
-                    type =int,
-                    help='test_interval /10')  # 一个epoch保存3次cache_model
+# parser.add_argument('--test_interval',
+#                     default=1,
+#                     type =int,
+#                     help='test_interval /10')  # 一个epoch保存3次cache_model
 
 parser.add_argument('--ct',
                     default=True,
@@ -100,7 +100,7 @@ parser.add_argument('--show',
                     help='show visualization',
                     action='store_true')
 parser.add_argument('--debug',
-                    default=True,
+                    default=False,
                     help='debug compute picture visualization',
                     action='store_true')
 opt = parser.parse_args()
@@ -116,6 +116,7 @@ if 'data2' in currentfile: # 3090
     dataset_dir = '/data2/2020/ssw/dataset'
 elif 'code' in currentfile: # r9000p
     dataset_dir = '/home/ssw/code/dataset'
+    opt.print_freq = 1
 else:
     raise IOError('dataset {} not exists.'.format(currentfile))
 

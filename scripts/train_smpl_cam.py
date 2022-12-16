@@ -54,7 +54,8 @@ def train(m, opt, train_loader, criterion, optimizer, writer, epoch, cfg, gt_val
     iter_start_time = time.time()
 
     iters = len(train_loader)
-    test_internal_iters = iters//10*opt.test_interval
+    test_internal_iters = iters//100
+    print('test_internal_iters: ', test_internal_iters)
 
     for iter, (inps, labels, idxs, img_paths, bboxes) in enumerate(train_loader):
 
@@ -256,7 +257,7 @@ def train(m, opt, train_loader, criterion, optimizer, writer, epoch, cfg, gt_val
         if opt.log:
             # TQDM 下面set_description是给tqdm显示打印的，变成loss: 8.06730000 | accuvd29: 0.0813 | acc17: 0.0800:   0%|▏                                                          | 254/78047 [00:40<3:26:42,  6.27it/s]
             # loss desciption loss: 7.54187632 | accuvd29: 0.0575 | acc17: 0.0000
-            loss_desciption ='loss: {loss:.8f} | accuvd29: {accuvd29:.4f} | acc17: {acc17:.4f}'.format(
+            loss_desciption ='loss: {loss:.4f} | accuvd29: {accuvd29:.4f} | acc17: {acc17:.4f}'.format(
                     loss=loss_logger.avg,
                     accuvd29=acc_uvd_29_logger.avg,
                     acc17=acc_xyz_17_logger.avg)
@@ -266,15 +267,16 @@ def train(m, opt, train_loader, criterion, optimizer, writer, epoch, cfg, gt_val
             if iter % opt.print_freq == 0:
                 time_print_freq = time.time() - iter_start_time  # 计算迭代打印频率时间
                 iter_start_time = time.time()
-                predict_time = len(train_loader)/opt.print_freq*time_print_freq/60  #预测整个epoch需要时间
+                pred_time = len(train_loader)/opt.print_freq*time_print_freq/60  #预测整个epoch需要时间
                 epoch_used_time = (time.time() - epoch_start_time)/60  # epoch已经使用的时间
-                loss_desciption += '  time: {:.2f}s  predict_time: {:.2f}m used_time: {:.2f}m'.format(
-                                    time_print_freq, predict_time, epoch_used_time)
+                loss_desciption += '  time: {:.2f}s  pred_time: {:.2f}m used_time: {:.2f}m'.format(
+                                    time_print_freq, pred_time, epoch_used_time)
                 logger.iterInfo(epoch, iter, len(train_loader), loss_desciption)
 
         if (iter+1) % test_internal_iters == 0: #保存的间隔  # iter从0开始，避免刚开始就保存模型
+            time_str = time.strftime('%Y-%m-%d_%H:%M:%S',time.localtime(int(round(time.time()*1000))/1000))
             cache_model_path =  opt.work_dir + '/checkpoint/cache_model.pth'
-            logger.info('=>  Saveing epoch_{}_iter{} cache_model_path: '.format(epoch, iter) + cache_model_path)
+            logger.info('=====> ' + time_str + ' Saving epoch_{}_iter_{} cache_model_path: '.format(epoch, iter) + cache_model_path)
             torch.save(m.module.state_dict(), cache_model_path)
             # Prediction Test
             # logger.info('=>  Start validate 3DPW dataset,  cache_model_path: ' + cache_model_path)
@@ -547,8 +549,10 @@ def main_worker(gpu, opt, cfg):
 
         lr_scheduler.step()
         # 每个epoch结束保存一下
-        # logger.info('saving '+ opt.work_dir + '/checkpoint/epoch_{}.pth'.format(epoch))
-        # torch.save(m.module.state_dict(), opt.work_dir + '/checkpoint/epoch_{}.pth'.format(epoch))
+        time_str = time.strftime('%Y-%m-%d_%H:%M:%S',time.localtime(int(round(time.time()*1000))/1000))
+        cache_model_path =  opt.work_dir + '/checkpoint/cache_model.pth'
+        logger.info('=====> ' + time_str + ' Saving epoch_{} cache_model_path: '.format(epoch) + cache_model_path)
+        torch.save(m.module.state_dict(), cache_model_path)
         if (epoch + 1) % opt.snapshot == 0:
             # if opt.log:
             #     # Save checkpoint
