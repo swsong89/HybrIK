@@ -147,11 +147,11 @@ class HRNetSMPLCam(nn.Module):
         self.register_buffer(
             'init_cam',
             torch.Tensor(init_cam).float())
-        self.dejoint = nn.Linear(self.joint_num*(2048+4), 2048)
-        self.decshape = nn.Linear(2048, 10)
-        self.decphi = nn.Linear(2048, 23 * 2)  # [cos(phi), sin(phi)]
-        self.deccam = nn.Linear(2048, 1)
-        self.decsigma = nn.Linear(2048, 29)
+        self.dejoint = nn.Linear(self.joint_num*(2048+4), 1024)
+        self.decshape = nn.Linear(1024, 10)
+        self.decphi = nn.Linear(1024, 23 * 2)  # [cos(phi), sin(phi)]
+        self.deccam = nn.Linear(1024, 1)
+        self.decsigma = nn.Linear(1024, 29)
 
         self.focal_length = kwargs['FOCAL_LENGTH']
         bbox_3d_shape = kwargs['BBOX_3D_SHAPE'] if 'BBOX_3D_SHAPE' in kwargs else (2000, 2000, 2000)
