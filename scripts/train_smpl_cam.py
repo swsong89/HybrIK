@@ -54,7 +54,8 @@ def train(m, opt, train_loader, criterion, optimizer, writer, epoch, cfg, gt_val
     iter_start_time = time.time()
 
     iters = len(train_loader)
-    test_internal_iters = iters//10*opt.test_interval
+    test_internal_iters = iters//20
+    print('test_internal_iters: ', test_internal_iters)
 
     for iter, (inps, labels, idxs, img_paths, bboxes) in enumerate(train_loader):
 
@@ -80,7 +81,7 @@ def train(m, opt, train_loader, criterion, optimizer, writer, epoch, cfg, gt_val
         if opt.debug:
             for i in range(len(img_paths)):
                 # transofr_img vis
-                img = inps.detach().cpu()[0]
+                img = inps[i].detach().cpu()
                 transfor_img = torch_std_to_img(img)
                 transfor_img = cv2.normalize(transfor_img, None, 0, 255, cv2.NORM_MINMAX, cv2.CV_8U)  # 结果是浮点数，可能是小数，imshow会自动标准化，imwrite不会，以防万一手动进行
                 transfor_img_vis = cv2.cvtColor(transfor_img, cv2.COLOR_RGB2BGR)
@@ -89,15 +90,15 @@ def train(m, opt, train_loader, criterion, optimizer, writer, epoch, cfg, gt_val
 
 
                 # # # origin img vis
-                origin_img= cv2.cvtColor(cv2.imread(img_paths[i]), cv2.COLOR_BGR2RGB)
-                origin_img_vis = cv2.cvtColor(origin_img, cv2.COLOR_RGB2BGR)
+                # origin_img= cv2.cvtColor(cv2.imread(img_paths[i]), cv2.COLOR_BGR2RGB)
+                # origin_img_vis = cv2.cvtColor(origin_img, cv2.COLOR_RGB2BGR)
 
 
                 #origin_bbox_img
                 transfor_img_double = cv2.resize(transfor_img,(bboxes[1], bboxes[1]),interpolation=cv2.INTER_CUBIC)   #dsize=（2*width,2*height）
 
                 bbox_xywh = xyxy2xywh(bboxes)  # 580.9016, 1105.1338, 1609.7358, 1609.7358 <- [-223.9663,  300.2659, 1385.7695, 1910.0017]
-                origin_uv_29 = labels['target_uvd_29'].detach().reshape(29, 3)[:, :2]
+                origin_uv_29 = labels['target_uvd_29'][i].detach().reshape(29, 3)[:, :2]
                 origin_pts = origin_uv_29 * bbox_xywh[2]
                 origin_pts[:, 0] = origin_pts[:, 0] + bbox_xywh[0]
                 origin_pts[:, 1] = origin_pts[:, 1] + bbox_xywh[1]
@@ -106,7 +107,7 @@ def train(m, opt, train_loader, criterion, optimizer, writer, epoch, cfg, gt_val
 
 
                 #pred_bbox_img
-                uv_29 = output.pred_uvd_jts.detach().reshape(29, 3)[:, :2]
+                uv_29 = output.pred_uvd_jts[i].detach().reshape(29, 3)[:, :2]
                 pts = uv_29 * bbox_xywh[2]
                 pts[:, 0] = pts[:, 0] + bbox_xywh[0]
                 pts[:, 1] = pts[:, 1] + bbox_xywh[1]
@@ -145,9 +146,9 @@ def train(m, opt, train_loader, criterion, optimizer, writer, epoch, cfg, gt_val
 
                 # transofr mesh 256
                 focal = 1000.0
-                transl = output.transl.detach()
+                transl = output.transl[None,i].detach()
 
-                vertices = output.pred_vertices.detach()
+                vertices = output.pred_vertices[None,i].detach()
 
                 verts_batch = vertices
                 transl_batch = transl
@@ -217,7 +218,7 @@ def train(m, opt, train_loader, criterion, optimizer, writer, epoch, cfg, gt_val
                 # cv2.imwrite('configs/tmp/transfor_and_pred.jpg', transfor_and_mesh_img)
 
                 cv2.imwrite('configs/tmp/transfor_mesh_origin_pred.jpg', transfor_vis_all)
-                print('ok')
+                # print('ok')
 
         loss = criterion(output, labels)
 
@@ -256,7 +257,7 @@ def train(m, opt, train_loader, criterion, optimizer, writer, epoch, cfg, gt_val
         if opt.log:
             # TQDM 下面set_description是给tqdm显示打印的，变成loss: 8.06730000 | accuvd29: 0.0813 | acc17: 0.0800:   0%|▏                                                          | 254/78047 [00:40<3:26:42,  6.27it/s]
             # loss desciption loss: 7.54187632 | accuvd29: 0.0575 | acc17: 0.0000
-            loss_desciption ='loss: {loss:.8f} | accuvd29: {accuvd29:.4f} | acc17: {acc17:.4f}'.format(
+            loss_desciption ='loss: {loss:.4f} | accuvd29: {accuvd29:.4f} | acc17: {acc17:.4f}'.format(
                     loss=loss_logger.avg,
                     accuvd29=acc_uvd_29_logger.avg,
                     acc17=acc_xyz_17_logger.avg)
@@ -266,15 +267,16 @@ def train(m, opt, train_loader, criterion, optimizer, writer, epoch, cfg, gt_val
             if iter % opt.print_freq == 0:
                 time_print_freq = time.time() - iter_start_time  # 计算迭代打印频率时间
                 iter_start_time = time.time()
-                predict_time = len(train_loader)/opt.print_freq*time_print_freq/60  #预测整个epoch需要时间
+                pred_time = len(train_loader)/opt.print_freq*time_print_freq/60  #预测整个epoch需要时间
                 epoch_used_time = (time.time() - epoch_start_time)/60  # epoch已经使用的时间
-                loss_desciption += '  time: {:.2f}s  predict_time: {:.2f}m used_time: {:.2f}m'.format(
-                                    time_print_freq, predict_time, epoch_used_time)
+                loss_desciption += '  time: {:.2f}s  pred_time: {:.2f}m used_time: {:.2f}m'.format(
+                                    time_print_freq, pred_time, epoch_used_time)
                 logger.iterInfo(epoch, iter, len(train_loader), loss_desciption)
 
         if (iter+1) % test_internal_iters == 0: #保存的间隔  # iter从0开始，避免刚开始就保存模型
+            time_str = time.strftime('%Y-%m-%d_%H:%M:%S',time.localtime(int(round(time.time()*1000))/1000))
             cache_model_path =  opt.work_dir + '/checkpoint/cache_model.pth'
-            logger.info('=>  Saveing epoch_{}_iter{} cache_model_path: '.format(epoch, iter) + cache_model_path)
+            logger.info('=====> ' + time_str + ' Saving epoch_{}_iter_{} cache_model_path: '.format(epoch, iter) + cache_model_path)
             torch.save(m.module.state_dict(), cache_model_path)
             # Prediction Test
             # logger.info('=>  Start validate 3DPW dataset,  cache_model_path: ' + cache_model_path)
@@ -547,7 +549,10 @@ def main_worker(gpu, opt, cfg):
 
         lr_scheduler.step()
         # 每个epoch结束保存一下
-        # torch.save(m.module.state_dict(), opt.work_dir + '/checkpoint/epoch_{}.pth'.format(epoch))
+        time_str = time.strftime('%Y-%m-%d_%H:%M:%S',time.localtime(int(round(time.time()*1000))/1000))
+        cache_model_path =  opt.work_dir + '/checkpoint/cache_model.pth'
+        logger.info('=====> ' + time_str + ' Saving epoch_{} cache_model_path: '.format(epoch) + cache_model_path)
+        torch.save(m.module.state_dict(), cache_model_path)
         if (epoch + 1) % opt.snapshot == 0:
             # if opt.log:
             #     # Save checkpoint

@@ -30,7 +30,7 @@ parser.add_argument('--snapshot', default=2, type=int,
 
 parser.add_argument('--rank', default=0, type=int,
                     help='node rank for distributed training')
-parser.add_argument('--dist-url', default='tcp://127.0.1.2:23456', type=str,
+parser.add_argument('--dist-url', default='tcp://127.0.1.2:23458', type=str,
                     help='url used to set up distributed training')
 parser.add_argument('--dist-backend', default='nccl', type=str,
                     help='distributed backend')
@@ -71,14 +71,14 @@ parser.add_argument('--gpu',
                     help='gpu')
 
 parser.add_argument('--print_freq',
-                    default='1',
+                    default='100',
                     type =int,
                     help='gpu')  # 打印的频率
 
-parser.add_argument('--test_interval',
-                    default=1,
-                    type =int,
-                    help='test_interval /10')  # 一个epoch保存3次cache_model
+# parser.add_argument('--test_interval',
+#                     default=1,
+#                     type =int,
+#                     help='test_interval /10')  # 一个epoch保存3次cache_model
 
 parser.add_argument('--ct',
                     default=True,
@@ -97,11 +97,11 @@ parser.add_argument('--fast_eval',
 
 parser.add_argument('--show',
                     default=False,
-                    help='会显示可视化',
+                    help='show visualization',
                     action='store_true')
 parser.add_argument('--debug',
-                    default=True,
-                    help='debug会计算每张图片的可视化效果',
+                    default=False,
+                    help='debug compute picture visualization',
                     action='store_true')
 opt = parser.parse_args()
 cfg_file_name = opt.cfg.split('/')[-1]
@@ -116,6 +116,7 @@ if 'data2' in currentfile: # 3090
     dataset_dir = '/data2/2020/ssw/dataset'
 elif 'code' in currentfile: # r9000p
     dataset_dir = '/home/ssw/code/dataset'
+    opt.print_freq = 1
 else:
     raise IOError('dataset {} not exists.'.format(currentfile))
 
