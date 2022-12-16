@@ -44,13 +44,14 @@ class SimpleTransformCam(object):
         True for training trasformation.
     """
 
-    def __init__(self, dataset, scale_factor, color_factor, occlusion, add_dpg,
+    def __init__(self, dataset, scale_factor, color_factor, occlusion, flip, add_dpg,
                  input_size, output_size, rot, sigma,
                  train, loss_type='MSELoss', dict_output=False, bbox_3d_shape=0):
         self._joint_pairs = dataset.joint_pairs
         self._scale_factor = scale_factor
         self._color_factor = color_factor
         self._occlusion = occlusion
+        self._flip = flip
         self._rot = rot
         self._add_dpg = add_dpg
 

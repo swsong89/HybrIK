@@ -102,7 +102,7 @@ class SimpleTransform3DSMPLCam(object):
         True for training trasformation.
     """
 
-    def __init__(self, dataset, scale_factor, color_factor, occlusion, add_dpg,
+    def __init__(self, dataset, scale_factor, color_factor, occlusion, flip, add_dpg,
                  input_size, output_size, depth_dim, bbox_3d_shape,
                  rot, sigma, train, loss_type='MSELoss', scale_mult=1.25, focal_length=1000, two_d=False,
                  root_idx=0):
@@ -116,6 +116,7 @@ class SimpleTransform3DSMPLCam(object):
         self._scale_factor = scale_factor
         self._color_factor = color_factor
         self._occlusion = occlusion
+        self._flip = flip
         self._rot = rot
         self._add_dpg = add_dpg
 
@@ -456,7 +457,7 @@ class SimpleTransform3DSMPLCam(object):
             joint_cam_17_xyz = joint_cam_17
             joints_cam_24_xyz = joint_cam_29[:24]
 
-            if random.random() > 0.75 and self._train:
+            if random.random() > 0.75 and self._train and self._flip:
                 assert src.shape[2] == 3
                 src = src[:, ::-1, :]
 

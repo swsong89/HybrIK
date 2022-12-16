@@ -84,6 +84,7 @@ def vis_bbox(image, bbox):
 
 
 def vis_2d(image, bbox, pts):
+    image = image.copy()
 
     x1, y1, x2, y2 = bbox
 

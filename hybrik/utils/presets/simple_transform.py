@@ -38,13 +38,14 @@ class SimpleTransform(object):
         True for training trasformation.
     """
 
-    def __init__(self, dataset, scale_factor, color_factor, occlusion, add_dpg,
+    def __init__(self, dataset, scale_factor, color_factor, occlusion, flip, add_dpg,
                  input_size, output_size, rot, sigma,
                  train, loss_type='MSELoss', dict_output=False):
         self._joint_pairs = dataset.joint_pairs
         self._scale_factor = scale_factor
         self._color_factor = color_factor
         self._occlusion = occlusion
+        self._flip = flip,
         self._rot = rot
         self._add_dpg = add_dpg
 
@@ -218,7 +219,7 @@ class SimpleTransform(object):
                     break
 
         joints = gt_joints
-        if random.random() > 0.5 and self._train:
+        if random.random() > 0.5 and self._train and self._flip:
             # src, fliped = random_flip_image(src, px=0.5, py=0)
             # if fliped[0]:
             assert src.shape[2] == 3

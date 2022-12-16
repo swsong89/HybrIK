@@ -97,6 +97,7 @@ class H36mSMPL(data.Dataset):
         self._output_size = cfg.MODEL.HEATMAP_SIZE
 
         self._occlusion = cfg.DATASET.OCCLUSION
+        self._flip = cfg.DATASET.FLIP
 
         self._crop = cfg.MODEL.EXTRA.CROP
         self._sigma = cfg.MODEL.EXTRA.SIGMA
@@ -135,6 +136,7 @@ class H36mSMPL(data.Dataset):
                 self, scale_factor=self._scale_factor,
                 color_factor=self._color_factor,
                 occlusion=self._occlusion,
+                flip=self._flip,
                 input_size=self._input_size,
                 output_size=self._output_size,
                 depth_dim=self._depth_dim,
@@ -147,6 +149,7 @@ class H36mSMPL(data.Dataset):
                 self, scale_factor=self._scale_factor,
                 color_factor=self._color_factor,
                 occlusion=self._occlusion,
+                flip=self._flip,
                 input_size=self._input_size,
                 output_size=self._output_size,
                 depth_dim=self._depth_dim,
