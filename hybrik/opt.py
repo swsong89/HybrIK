@@ -96,13 +96,13 @@ parser.add_argument('--fast_eval',
                     action='store_true')
 
 parser.add_argument('--show',
-                    default=True,
-                    help='show',
-                    action='会显示可视化')
+                    default=False,
+                    help='会显示可视化',
+                    action='store_true')
 parser.add_argument('--debug',
                     default=True,
-                    help='show',
-                    action='debug会计算每张图片的可视化效果')
+                    help='debug会计算每张图片的可视化效果',
+                    action='store_true')
 opt = parser.parse_args()
 cfg_file_name = opt.cfg.split('/')[-1]
 cfg = update_config(opt.cfg)
