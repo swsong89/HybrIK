@@ -1,0 +1,45 @@
+feat min:  0.0  feat max:  0.5873933  camera_scale:  0.45940623
+epoch: 0, iter: 0/312188, loss: -3.16866541 | accuvd29: 0.9583 | acc17: 1.0000  time: 0.74s  predict_time: 3849.80m used_time: 0.01m
+Reducer buckets have been rebuilt in this iteration.
+feat min:  0.0  feat max:  0.61340237  camera_scale:  0.457284
+epoch: 0, iter: 1/312188, loss: -3.01018023 | accuvd29: 0.9292 | acc17: 0.5000  time: 0.47s  predict_time: 2423.83m used_time: 0.02m
+feat min:  0.0  feat max:  0.59636474  camera_scale:  0.22867471
+epoch: 0, iter: 2/312188, loss: -2.92321293 | accuvd29: 0.9250 | acc17: 0.3333  time: 0.49s  predict_time: 2540.54m used_time: 0.03m
+feat min:  0.0  feat max:  0.6111599  camera_scale:  0.4961295
+epoch: 0, iter: 3/312188, loss: -2.99809915 | accuvd29: 0.9437 | acc17: 0.5000  time: 0.43s  predict_time: 2256.85m used_time: 0.04m
+feat min:  0.0  feat max:  0.5993094  camera_scale:  0.37676924
+epoch: 0, iter: 4/312188, loss: -3.16186290 | accuvd29: 0.9550 | acc17: 0.6000  time: 0.44s  predict_time: 2294.13m used_time: 0.04m
+feat min:  0.0  feat max:  0.5913595  camera_scale:  0.90598905
+epoch: 0, iter: 5/312188, loss: -3.08545764 | accuvd29: 0.9625 | acc17: 0.5000  time: 0.43s  predict_time: 2240.02m used_time: 0.05m
+feat min:  0.0  feat max:  0.57935333  camera_scale:  0.41788346
+epoch: 0, iter: 6/312188, loss: -3.06221955 | accuvd29: 0.9679 | acc17: 0.4286  time: 0.44s  predict_time: 2286.18m used_time: 0.06m
+feat min:  0.0  feat max:  0.5810917  camera_scale:  0.5928324
+epoch: 0, iter: 7/312188, loss: -2.79776417 | accuvd29: 0.9117 | acc17: 0.5000  time: 0.44s  predict_time: 2274.13m used_time: 0.06m
+feat min:  0.0  feat max:  0.60480714  camera_scale:  0.47323143
+epoch: 0, iter: 8/312188, loss: -2.83369702 | accuvd29: 0.9215 | acc17: 0.4444  time: 0.48s  predict_time: 2474.07m used_time: 0.07m
+feat min:  0.0  feat max:  0.60549533  camera_scale:  0.5386203
+epoch: 0, iter: 9/312188, loss: -2.73929178 | accuvd29: 0.8710 | acc17: 0.4000  time: 0.48s  predict_time: 2518.91m used_time: 0.08m
+feat min:  0.0  feat max:  0.5898679  camera_scale:  0.6425966
+epoch: 0, iter: 10/312188, loss: -2.41029321 | accuvd29: 0.7918 | acc17: 0.3636  time: 0.44s  predict_time: 2293.31m used_time: 0.09m
+feat min:  0.0  feat max:  0.56321216  camera_scale:  1.0285254
+epoch: 0, iter: 11/312188, loss: -2.38824309 | accuvd29: 0.7814 | acc17: 0.3333  time: 0.44s  predict_time: 2299.33m used_time: 0.10m
+feat min:  0.0  feat max:  0.58465046  camera_scale:  0.7844894
+epoch: 0, iter: 12/312188, loss: -2.27713740 | accuvd29: 0.7213 | acc17: 0.3077  time: 0.45s  predict_time: 2366.63m used_time: 0.10m
+feat min:  0.0  feat max:  0.58187133  camera_scale:  0.723192
+epoch: 0, iter: 13/312188, loss: -2.18528914 | accuvd29: 0.7190 | acc17: 0.3333  time: 0.48s  predict_time: 2504.02m used_time: 0.11m
+feat min:  0.0  feat max:  0.59867114  camera_scale:  0.54278696
+epoch: 0, iter: 14/312188, loss: -2.25692216 | accuvd29: 0.7350 | acc17: 0.3778  time: 0.48s  predict_time: 2500.72m used_time: 0.12m
+feat min:  0.0  feat max:  0.57677  camera_scale:  0.5193709
+epoch: 0, iter: 15/312188, loss: -2.27501177 | accuvd29: 0.7451 | acc17: 0.4167  time: 0.44s  predict_time: 2276.51m used_time: 0.13m
+feat min:  0.0  feat max:  0.5780825  camera_scale:  0.1768775
+epoch: 0, iter: 16/312188, loss: -2.17217019 | accuvd29: 0.7013 | acc17: 0.3922  time: 0.43s  predict_time: 2255.00m used_time: 0.13m
+feat min:  0.0  feat max:  0.5891885  camera_scale:  0.9841452
+epoch: 0, iter: 17/312188, loss: -2.14468990 | accuvd29: 0.6808 | acc17: 0.3704  time: 0.46s  predict_time: 2374.93m used_time: 0.14m
+feat min:  0.0  feat max:  0.56487465  camera_scale:  0.33853197
+epoch: 0, iter: 18/312188, loss: -2.09238277 | accuvd29: 0.6450 | acc17: 0.3509  time: 0.47s  predict_time: 2436.74m used_time: 0.15m
+feat min:  0.0  feat max:  0.58733296  camera_scale:  0.6202074
+epoch: 0, iter: 19/312188, loss: -2.08782427 | accuvd29: 0.6627 | acc17: 0.3833  time: 0.52s  predict_time: 2697.52m used_time: 0.16m
+feat min:  0.0  feat max:  0.54761  camera_scale:  0.9634959
+epoch: 0, iter: 20/312188, loss: -2.04020982 | accuvd29: 0.6443 | acc17: 0.3651  time: 0.46s  predict_time: 2413.94m used_time: 0.17m
+feat min:  0.0  feat max:  0.57972145  camera_scale:  0.4106729
+epoch: 0, iter: 21/312188, loss: -2.06173186 | accuvd29: 0.6453 | acc17: 0.3485  time: 0.50s  predict_time: 2590.59m used_time: 0.17m

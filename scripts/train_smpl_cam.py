@@ -80,7 +80,7 @@ def train(m, opt, train_loader, criterion, optimizer, writer, epoch, cfg, gt_val
         if opt.debug:
             for i in range(len(img_paths)):
                 # transofr_img vis
-                img = inps.detach().cpu()[0]
+                img = inps[i].detach().cpu()
                 transfor_img = torch_std_to_img(img)
                 transfor_img = cv2.normalize(transfor_img, None, 0, 255, cv2.NORM_MINMAX, cv2.CV_8U)  # 结果是浮点数，可能是小数，imshow会自动标准化，imwrite不会，以防万一手动进行
                 transfor_img_vis = cv2.cvtColor(transfor_img, cv2.COLOR_RGB2BGR)
@@ -89,15 +89,15 @@ def train(m, opt, train_loader, criterion, optimizer, writer, epoch, cfg, gt_val
 
 
                 # # # origin img vis
-                origin_img= cv2.cvtColor(cv2.imread(img_paths[i]), cv2.COLOR_BGR2RGB)
-                origin_img_vis = cv2.cvtColor(origin_img, cv2.COLOR_RGB2BGR)
+                # origin_img= cv2.cvtColor(cv2.imread(img_paths[i]), cv2.COLOR_BGR2RGB)
+                # origin_img_vis = cv2.cvtColor(origin_img, cv2.COLOR_RGB2BGR)
 
 
                 #origin_bbox_img
                 transfor_img_double = cv2.resize(transfor_img,(bboxes[1], bboxes[1]),interpolation=cv2.INTER_CUBIC)   #dsize=（2*width,2*height）
 
                 bbox_xywh = xyxy2xywh(bboxes)  # 580.9016, 1105.1338, 1609.7358, 1609.7358 <- [-223.9663,  300.2659, 1385.7695, 1910.0017]
-                origin_uv_29 = labels['target_uvd_29'].detach().reshape(29, 3)[:, :2]
+                origin_uv_29 = labels['target_uvd_29'][i].detach().reshape(29, 3)[:, :2]
                 origin_pts = origin_uv_29 * bbox_xywh[2]
                 origin_pts[:, 0] = origin_pts[:, 0] + bbox_xywh[0]
                 origin_pts[:, 1] = origin_pts[:, 1] + bbox_xywh[1]
@@ -106,7 +106,7 @@ def train(m, opt, train_loader, criterion, optimizer, writer, epoch, cfg, gt_val
 
 
                 #pred_bbox_img
-                uv_29 = output.pred_uvd_jts.detach().reshape(29, 3)[:, :2]
+                uv_29 = output.pred_uvd_jts[i].detach().reshape(29, 3)[:, :2]
                 pts = uv_29 * bbox_xywh[2]
                 pts[:, 0] = pts[:, 0] + bbox_xywh[0]
                 pts[:, 1] = pts[:, 1] + bbox_xywh[1]
@@ -145,9 +145,9 @@ def train(m, opt, train_loader, criterion, optimizer, writer, epoch, cfg, gt_val
 
                 # transofr mesh 256
                 focal = 1000.0
-                transl = output.transl.detach()
+                transl = output.transl[None,i].detach()
 
-                vertices = output.pred_vertices.detach()
+                vertices = output.pred_vertices[None,i].detach()
 
                 verts_batch = vertices
                 transl_batch = transl
@@ -217,7 +217,7 @@ def train(m, opt, train_loader, criterion, optimizer, writer, epoch, cfg, gt_val
                 # cv2.imwrite('configs/tmp/transfor_and_pred.jpg', transfor_and_mesh_img)
 
                 cv2.imwrite('configs/tmp/transfor_mesh_origin_pred.jpg', transfor_vis_all)
-                print('ok')
+                # print('ok')
 
         loss = criterion(output, labels)
 

@@ -248,8 +248,8 @@ class LaplaceLossDimSMPLCam(nn.Module):
             trans_loss = self.criterion_smpl(pred_trans, target_trans)
             loss += (1 * trans_loss)
 
-        pred_scale = output.cam_scale * smpl_weight
-        target_scale = labels['camera_scale'] * smpl_weight
+        pred_scale = output.cam_scale * smpl_weight  # -110.9219  预测的scale太大了
+        target_scale = labels['camera_scale'] * smpl_weight  # 0.5962
         scale_loss = self.criterion_smpl(pred_scale, target_scale)
 
         loss += (1 * scale_loss)
