@@ -50,8 +50,7 @@ parser.add_argument('--exp-lr', default=False, dest='exp_lr',
 "----------------------------- Log options -----------------------------"
 parser.add_argument('--board', default=True, dest='board',
                     help='Logging with tensorboard', action='store_true')
-parser.add_argument('--debug', default=False, dest='debug',
-                    help='Visualization debug', action='store_true')
+
 parser.add_argument('--params', default=False, dest='params',
                     help='Logging params', action='store_true')
 parser.add_argument('--map', default=True, dest='map',
@@ -96,6 +95,14 @@ parser.add_argument('--fast_eval',
                     help='fast eval',
                     action='store_true')
 
+parser.add_argument('--show',
+                    default=True,
+                    help='show',
+                    action='会显示可视化')
+parser.add_argument('--debug',
+                    default=True,
+                    help='show',
+                    action='debug会计算每张图片的可视化效果')
 opt = parser.parse_args()
 cfg_file_name = opt.cfg.split('/')[-1]
 cfg = update_config(opt.cfg)
