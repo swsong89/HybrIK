@@ -70,8 +70,9 @@ parser.add_argument('--gpu',
                     type =str,
                     help='gpu')
 
-parser.add_argument('--print_freq',
+parser.add_argument('--print-freq',
                     default='100',
+                    dest='print_freq',
                     type =int,
                     help='gpu')  # 打印的频率
 
@@ -90,8 +91,9 @@ parser.add_argument('--tqdm',
                     help='display tqdm',
                     action='store_true')
 
-parser.add_argument('--fast_eval',
+parser.add_argument('--fast-eval',
                     default=False,
+                    dest='fast_eval',
                     help='fast eval',
                     action='store_true')
 

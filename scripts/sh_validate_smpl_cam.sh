@@ -10,12 +10,12 @@ CKPT='pretrained_model/hybrik_hrnet48_w3dpw.pth'
 
 
 
-PORT=${3:-23456}
+PORT=${3:-23459}
 
 HOST=$(hostname -i)
 python ./scripts/validate_smpl_cam.py \
     --batch 8 \
-    --gpus 0,1,2,3 \
+    --gpu 0 \
     --world-size 1 \
     --flip-test \
     --launcher pytorch --rank 0 \

@@ -197,7 +197,7 @@ class SMPL_layer(nn.Module):
             full_pose = pose_axis_angle
 
         # Translate thetas to rotation matrics
-        pose2rot = True
+        pose2rot = False
         # vertices: (B, N, 3), joints: (B, K, 3)
         vertices, joints, rot_mats, joints_from_verts_h36m = lbs(betas, full_pose, self.v_template,
                                                                  self.shapedirs, self.posedirs,
