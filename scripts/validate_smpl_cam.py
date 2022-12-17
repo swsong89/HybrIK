@@ -18,15 +18,15 @@ from tqdm import tqdm
 parser = argparse.ArgumentParser(description='HybrIK Validate')
 parser.add_argument('--cfg',
                     help='experiment configure file name',
-                    default='configs/256x192_adam_lr1e-3-res34_smpl_3d_cam_2x_mix_w_3dhp.yaml',
+                    default='configs/256x192_adam_lr1e_3_hrw48_cam_2x_w_pw3d_3dhp_dev_sample.yaml',
                     # required=True,
                     type=str)
 parser.add_argument('--checkpoint',
                     help='checkpoint file name',
-                    default='pretrained_model/pretrained_w_cam.pth',
+                    default='pretrained_model/epoch_1.pth',
                     # required=True,
                     type=str)
-parser.add_argument('--gpus',
+parser.add_argument('--gpu',
                     help='gpus',
                     default = '0',
                     type=str)
@@ -35,7 +35,7 @@ parser.add_argument('--batch',
                     default='8',
                     type=int)
 parser.add_argument('--flip-test',
-                    default=False,
+                    default=True,
                     dest='flip_test',
                     help='flip test',
                     action='store_true')
@@ -46,7 +46,7 @@ parser.add_argument('--flip-shift',
                     action='store_true')
 parser.add_argument('--rank', default=0, type=int,
                     help='node rank for distributed testing')
-parser.add_argument('--dist-url', default='tcp://127.0.1.2:23457', type=str,
+parser.add_argument('--dist-url', default='tcp://127.0.1.2:23456', type=str,
                     help='url used to set up distributed testing')
 parser.add_argument('--dist-backend', default='nccl', type=str,
                     help='distributed backend')
@@ -57,13 +57,27 @@ parser.add_argument('--world-size', default=1, type=int,
 
 opt = parser.parse_args()
 cfg = update_config(opt.cfg)
+# 设置gpu
+os.environ["CUDA_VISIBLE_DEVICES"] = opt.gpu
 
-gpus = [int(i) for i in opt.gpus.split(',')]
+# 添加根目录
+currentfile = os.path.abspath(__file__)  # '/home/ssw/code/ik/Hybrik/opt.py'
+if 'data2' in currentfile: # 3090
+    dataset_dir = '/data2/2020/ssw/dataset'
+elif 'code' in currentfile: # r9000p
+    dataset_dir = '/home/ssw/code/dataset'
+    opt.print_freq = 1
+else:
+    raise IOError('dataset {} not exists.'.format(currentfile))
+
+cfg['DATASET']['DATASET_DIR'] = dataset_dir
 
 norm_method = cfg.LOSS.get('norm', 'softmax')
 
 
 def validate_gt(m, opt, cfg, gt_val_dataset, heatmap_to_coord, batch_size=32, pred_root=False, test_vertice=False):
+    print('opt.flip_test: ', opt.flip_test)
+    print('batch_size: ', batch_size)
 
     gt_val_sampler = torch.utils.data.distributed.DistributedSampler(
         gt_val_dataset, num_replicas=opt.world_size, rank=opt.rank)
@@ -77,7 +91,7 @@ def validate_gt(m, opt, cfg, gt_val_dataset, heatmap_to_coord, batch_size=32, pr
     hm_shape = (hm_shape[1], hm_shape[0])
     pve_list = []
 
-    for inps, labels, img_ids, bboxes in tqdm(gt_val_loader, dynamic_ncols=True):
+    for inps, labels, img_ids, img_paths, bboxes in tqdm(gt_val_loader, dynamic_ncols=True):
         if isinstance(inps, list):
             inps = [inp.cuda(opt.gpu) for inp in inps]
         else:

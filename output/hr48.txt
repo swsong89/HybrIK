@@ -55,3 +55,55 @@ XYZ_24 Protocol 2 error (MPJPE) >> PA-MPJPE: 31.819007 | MPJPE: 47.561351, x: 14
 Directions: 44.67 Discussion: 45.91 Eating: 46.19 Greeting: 43.66 Phoning: 51.52 Posing: 41.88 Purchases: 43.68 Sitting: 57.03 SittingDown: 61.37 Smoking: 49.19 Photo: 49.72 Waiting: 39.88 Walking: 40.37 WalkDog: 49.97 WalkTogether: 43.21 
 Test result is saved at exp/test_3d_kpt.json
 ##### gt h36m err: 29.782275327133778 #####
+
+
+
+
+
+
+
+
+Loading model from pretrained_model/hybrik_hrnet48_w3dpw.pth...
+##### Testing on 3DPW #####
+opt.flip_test:  False
+batch_size:  8
+100%|███████████████████████████████████████████████████████████| 4440/4440 [13:10<00:00,  5.62it/s]
+Evaluation start...
+XYZ_14 PA-MPJPE: 42.962008 | MPJPE: 72.651816, x: 25.196119, y: 29.77, z: 50.591085
+
+Test result is saved at exp/test_3d_kpt.json
+Evaluation start...
+XYZ_24 PA-MPJPE: 47.503904 | MPJPE: 72.059827, x: 24.080958, y: 30.99, z: 49.655844
+
+Test result is saved at exp/test_3d_kpt.json
+PVE: 84.26351004389224
+##### gt 3dpw err: 42.962008227957185 #####
+##### Testing on Human3.6M #####
+opt.flip_test:  False
+batch_size:  8
+100%|███████████████████████████████████████████████████████████| 3231/3231 [09:05<00:00,  5.92it/s]
+Evaluation start...
+XYZ_14 Protocol 2 error (MPJPE) >> PA-MPJPE: 30.691050 | MPJPE: 48.301153, x: 15.308200, y: 25.81, z: 29.784942
+Directions: 44.68 Discussion: 46.14 Eating: 46.98 Greeting: 45.16 Phoning: 50.99 Posing: 42.80 Purchases: 45.16 Sitting: 57.57 SittingDown: 63.51 Smoking: 49.34 Photo: 50.41 Waiting: 41.86 Walking: 41.60 WalkDog: 50.88 WalkTogether: 44.57 
+Test result is saved at exp/test_3d_kpt.json
+Evaluation start...
+XYZ_24 Protocol 2 error (MPJPE) >> PA-MPJPE: 32.819087 | MPJPE: 48.653979, x: 14.910972, y: 25.09, z: 31.265762
+Directions: 45.67 Discussion: 46.46 Eating: 47.78 Greeting: 44.80 Phoning: 51.92 Posing: 43.57 Purchases: 44.66 Sitting: 58.68 SittingDown: 62.66 Smoking: 50.72 Photo: 51.12 Waiting: 40.95 Walking: 41.03 WalkDog: 50.72 WalkTogether: 44.08 
+
+
+
+Loading model from pretrained_model/hybrik_hrnet48_w3dpw.pth...
+##### Testing on 3DPW #####
+opt.flip_test:  True
+XYZ_14 PA-MPJPE: 41.818486 | MPJPE: 71.290773, x: 24.668325, y: 29.40, z: 49.618508
+
+Test result is saved at exp/test_3d_kpt.json
+Evaluation start...
+XYZ_24 PA-MPJPE: 46.256859 | MPJPE: 70.619977, x: 23.541902, y: 30.64, z: 48.569972
+
+Test result is saved at exp/test_3d_kpt.json
+PVE: 82.34737638199518
+##### gt 3dpw err: 41.81848627450656 #####
+##### Testing on Human3.6M #####
+opt.flip_test:  True
+batch_size:  8

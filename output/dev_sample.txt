@@ -1,0 +1,13 @@
+
+
+flip false
+XYZ_14 Protocol 2 error (MPJPE) >> PA-MPJPE: 32.807456 | MPJPE: 50.800153, x: 16.539575, y: 26.94, z: 31.239903
+Directions: 46.41 Discussion: 48.54 Eating: 49.87 Greeting: 47.75 Phoning: 53.99 Posing: 44.80 Purchases: 46.91 Sitting: 60.74 SittingDown: 68.06 Smoking: 51.79 Photo: 53.20 Waiting: 44.30 Walking: 42.44 WalkDog: 53.64 WalkTogether: 46.10 
+
+
+
+XYZ_14 PA-MPJPE: 44.265872 | MPJPE: 74.448451, x: 26.408057, y: 30.19, z: 51.683061
+
+Test result is saved at ./exp/mix2_smpl_cam/256x192_adam_lr1e_3_hrw48_cam_2x_w_pw3d_3dhp_dev_sample.yaml-test_3dpw/test_3d_kpt.json
+=>  Saveing val_checkpoint_path: /checkpoint/epoch_2_z_h36m_32.81_3dpw_44.27.pth
+##### Epoch 2 | h36m err: 32.80745583184493 / 999 | 3dpw err: 44.26587177336614 / 999 #####

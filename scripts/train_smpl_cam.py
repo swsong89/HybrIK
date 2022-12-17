@@ -291,7 +291,8 @@ def train(m, opt, train_loader, criterion, optimizer, writer, epoch, cfg, gt_val
     return loss_logger.avg, acc_xyz_17_logger.avg
 
 
-def validate_gt(m, opt, cfg, gt_val_dataset, heatmap_to_coord, batch_size=cfg.TRAIN.get('BATCH_SIZE')*2//4, pred_root=False):  # 3/4 batchsize在h36m和pw3d的情况下不会超出训练需要的内存
+def validate_gt(m, opt, cfg, gt_val_dataset, heatmap_to_coord, batch_size=cfg.TRAIN.get('BATCH_SIZE')//2, pred_root=False):  # 3/4 batchsize在h36m和pw3d的情况下不会超出训练需要的内存
+    print('batch_size: ', batch_size)
 
     gt_val_sampler = torch.utils.data.distributed.DistributedSampler(
         gt_val_dataset, num_replicas=opt.world_size, rank=opt.rank)
