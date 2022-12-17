@@ -38,7 +38,7 @@ def _init_fn(worker_id):
 smpl_faces = None
 
 def train(m, opt, train_loader, criterion, optimizer, writer, epoch, cfg, gt_val_dataset_3dpw, heatmap_to_coord):
-    print('bathc_size: ', cfg.TRAIN.get('BATCH_SIZE'))  # cfg.TRAIN.BATCH_SIZE如果不存在会报错, cfg.TRAIN.get('BATCH_SIZE')不存在返回None
+    print('batch_size: ', cfg.TRAIN.get('BATCH_SIZE'))  # cfg.TRAIN.BATCH_SIZE如果不存在会报错, cfg.TRAIN.get('BATCH_SIZE')不存在返回None
     loss_logger = DataLogger()
     acc_uvd_29_logger = DataLogger()
     acc_xyz_17_logger = DataLogger()
@@ -54,7 +54,7 @@ def train(m, opt, train_loader, criterion, optimizer, writer, epoch, cfg, gt_val
     iter_start_time = time.time()
 
     iters = len(train_loader)
-    test_internal_iters = iters//100
+    test_internal_iters = iters//20
     print('test_internal_iters: ', test_internal_iters)
 
     for iter, (inps, labels, idxs, img_paths, bboxes) in enumerate(train_loader):
@@ -291,7 +291,7 @@ def train(m, opt, train_loader, criterion, optimizer, writer, epoch, cfg, gt_val
     return loss_logger.avg, acc_xyz_17_logger.avg
 
 
-def validate_gt(m, opt, cfg, gt_val_dataset, heatmap_to_coord, batch_size=cfg.TRAIN.get('BATCH_SIZE')*3//4, pred_root=False):  # 3/4 batchsize在h36m和pw3d的情况下不会超出训练需要的内存
+def validate_gt(m, opt, cfg, gt_val_dataset, heatmap_to_coord, batch_size=cfg.TRAIN.get('BATCH_SIZE')*2//4, pred_root=False):  # 3/4 batchsize在h36m和pw3d的情况下不会超出训练需要的内存
 
     gt_val_sampler = torch.utils.data.distributed.DistributedSampler(
         gt_val_dataset, num_replicas=opt.world_size, rank=opt.rank)
@@ -307,7 +307,7 @@ def validate_gt(m, opt, cfg, gt_val_dataset, heatmap_to_coord, batch_size=cfg.TR
     if opt.tqdm:
         gt_val_loader = tqdm(gt_val_loader, dynamic_ncols=True)
 
-    for val_iter, (inps, labels, img_ids, bboxes) in enumerate(gt_val_loader):
+    for val_iter, (inps, labels, img_ids, img_paths, bboxes) in enumerate(gt_val_loader):
         if val_iter % 500 == 0:
             print('{} /{}'.format(val_iter, len(gt_val_loader)))
         if isinstance(inps, list):
@@ -441,7 +441,8 @@ def main_worker(gpu, opt, cfg):
         files = os.listdir(checkpoint_path)
         try:
             max_checkpoint_path = max(files)
-            begin_epoch = int(max_checkpoint_path.split('/')[-1].split('_')[1]) + 1  # epoch_1_iter_2,从epoch下一个开始
+            print('max_checkpoint_path: ', max_checkpoint_path)
+            begin_epoch = int(max_checkpoint_path.split('/')[-1].replace('.pth', '').split('_')[1]) + 1  # epoch_1_iter_2,从epoch下一个开始
             cfg.TRAIN.BEGIN_EPOCH = begin_epoch
             cfg.MODEL.PRETRAINED = checkpoint_path + '/' + max_checkpoint_path
             logger.info('Find newest checkpoint_path: ' + cfg.MODEL.PRETRAINED)
@@ -525,6 +526,7 @@ def main_worker(gpu, opt, cfg):
 
     if opt.fast_eval:
         print('-----------fast eval----------------')
+        print('fast eval model_path: ' + cfg.MODEL.PRETRAINED)
         with torch.no_grad():
             gt_tot_err_h36m = validate_gt(m, opt, cfg, gt_val_dataset_h36m, heatmap_to_coord)
             gt_tot_err_3dpw = validate_gt(m, opt, cfg, gt_val_dataset_3dpw, heatmap_to_coord)

@@ -56,7 +56,7 @@ parser.add_argument('--params', default=False, dest='params',
 parser.add_argument('--map', default=True, dest='map',
                     help='Evaluate mAP per epoch', action='store_true')
 parser.add_argument('--flip-test',
-                    default=True,
+                    default=False,
                     dest='flip_test',
                     help='flip test',
                     action='store_true')
