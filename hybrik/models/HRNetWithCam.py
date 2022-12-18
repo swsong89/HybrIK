@@ -9,9 +9,9 @@ from .builder import SPPE
 from .layers.smpl.SMPL import SMPL_layer
 from .layers.hrnet.hrnet import get_hrnet
 
-is_dev = False
+is_dev_sample = False
 
-is_dev = True
+is_dev_sample = True
 
 def flip(x):
     assert (x.dim() == 3 or x.dim() == 4)
@@ -143,7 +143,7 @@ class HRNetSMPLCam(nn.Module):
             torch.Tensor(init_cam).float())
 
 
-        if is_dev:
+        if is_dev_sample:
             # 下面是基于关节点
             # self.joint_num = 29  # 15
             # # self.graph_adj = torch.from_numpy(self.smpl.graph_adj).float()  # 15x15
@@ -295,37 +295,128 @@ class HRNetSMPLCam(nn.Module):
 
 
         # 采样
-        if is_dev:
-            scores = []
-            img_feat_joints = []
-            for j in range(29):
-                x = coord_x[:,j,0] / (self.width_dim - 1) * 2 - 1  # TODO *2-1是什么意思，前面的部分相当于该点在图片的x轴百分比 0.2892
-                y = coord_y[:,j,0] / (self.height_dim - 1) * 2 - 1  # 0.2934  # 
-                z = coord_z[:,j,0] / (self.depth_dim - 1) * 2 - 1  # 0.1429  [1,29,1] 之间-1~1
-                # 得到关节点置信度
-                grid = torch.stack((x, y, z), 1)[:, None, None, None, :]  # torch.stack((x, y, z), 1) [1,3] grid [1,1,1,1,3]
-                score_j = F.grid_sample(heatmaps[:, j, None, :, :, :], grid, align_corners=True)[:, 0, 0, 0, 0]  # score_j [1(batchsize)] 因为batch_size=1,(batch_size) oint_heatmap[:, j, None, :, :, :] [N,1,64,64,64] -> [N,1,1,1,1]
-                scores.append(score_j)  # TODO grid_sample
+        if is_dev_sample:
+            if flip_test == False:
+                scores = []
+                img_feat_joints = []
+                for j in range(29):
+                    x = coord_x[:,j,0] / (self.width_dim - 1) * 2 - 1  # TODO *2-1是什么意思，前面的部分相当于该点在图片的x轴百分比 0.2892
+                    y = coord_y[:,j,0] / (self.height_dim - 1) * 2 - 1  # 0.2934  # 
+                    z = coord_z[:,j,0] / (self.depth_dim - 1) * 2 - 1  # 0.1429  [1,29,1] 之间-1~1
+                    # 得到关节点置信度
+                    grid = torch.stack((x, y, z), 1)[:, None, None, None, :]  # torch.stack((x, y, z), 1) [1,3] grid [1,1,1,1,3]
+                    score_j = F.grid_sample(heatmaps[:, j, None, :, :, :], grid, align_corners=True)[:, 0, 0, 0, 0]  # score_j [1(batchsize)] 因为batch_size=1,(batch_size) oint_heatmap[:, j, None, :, :, :] [N,1,64,64,64] -> [N,1,1,1,1]
+                    scores.append(score_j)  # TODO grid_sample
 
-                # 根据关节点在图像特征进行采样
-                img_feat = x0.float()
-                img_grid = torch.stack((x, y), 1)[:, None, None, :] # [N,1,1,2] <- [N,2]
-                img_feat_j = F.grid_sample(img_feat, img_grid, align_corners=True)[:, :, 0, 0]  # (batch_size, channel_dim) [1,2048]
-                img_feat_joints.append(img_feat_j)
-            scores = torch.stack(scores)  # (joint_num, batch_size)  [29,1]  [tensor,tensor...]15个tensor, stack默认0所以是[15,1]如果是1则是[1,15]
-            joint_score = scores.permute(1, 0)[:, :, None]  # (batch_size, joint_num, 1)  [1,29,1]
-            img_feat_joints = torch.stack(img_feat_joints) # (joint_num, batch_size, channel_dim) [15,1,2048]
-            img_feat_joints = img_feat_joints.permute(1, 0 ,2) # (batch_size, joint_num, channel_dim) [1,15,2048]
-            pred_uvd_jts_29 = torch.cat((coord_x, coord_y, coord_z), dim=2)  # 0, 64
-            feat = torch.cat((img_feat_joints, pred_uvd_jts_29, joint_score), dim=2)  # [1,15,2052(C'+3+1=2048+3+1=2052)]
-            feat = feat.view(x0.size(0), -1)  # [1, 59508]
-            feat = self.dejoint(feat)  # 【1，2048】<- [1, 59508] conv(59508,2048)
-            # print('before feat min: ', feat.detach().min().cpu().numpy(), ' feat max: ', feat.detach().max().cpu().numpy())
-            # feat = torch.sigmoid(feat)
-            # 和softmax替换
-            feat = (feat-feat.min(-1).values.view(-1,1))/(feat.max(-1).values.view(-1,1)-feat.min(-1).values.view(-1,1))
+                    # 根据关节点在图像特征进行采样
+                    img_feat = x0.float()
+                    img_grid = torch.stack((x, y), 1)[:, None, None, :] # [N,1,1,2] <- [N,2]
+                    img_feat_j = F.grid_sample(img_feat, img_grid, align_corners=True)[:, :, 0, 0]  # (batch_size, channel_dim) [1,2048]
+                    img_feat_joints.append(img_feat_j)
+                scores = torch.stack(scores)  # (joint_num, batch_size)  [29,1]  [tensor,tensor...]15个tensor, stack默认0所以是[15,1]如果是1则是[1,15]
+                joint_score = scores.permute(1, 0)[:, :, None]  # (batch_size, joint_num, 1)  [1,29,1]
+                img_feat_joints = torch.stack(img_feat_joints) # (joint_num, batch_size, channel_dim) [15,1,2048]
+                img_feat_joints = img_feat_joints.permute(1, 0 ,2) # (batch_size, joint_num, channel_dim) [1,15,2048]
+                pred_uvd_jts_29 = torch.cat((coord_x, coord_y, coord_z), dim=2)  # 0, 64
+                feat = torch.cat((img_feat_joints, pred_uvd_jts_29, joint_score), dim=2)  # [1,15,2052(C'+3+1=2048+3+1=2052)]
+                feat = feat.view(x0.size(0), -1)  # [1, 59508]
+                feat = self.dejoint(feat)  # 【1，2048】<- [1, 59508] conv(59508,2048)
+                # print('before feat min: ', feat.detach().min().cpu().numpy(), ' feat max: ', feat.detach().max().cpu().numpy())
+                # feat = torch.sigmoid(feat)
+                # 和softmax替换
+                feat = (feat-feat.min(-1).values.view(-1,1))/(feat.max(-1).values.view(-1,1)-feat.min(-1).values.view(-1,1))
 
-            pred_uvd_jts_29 = pred_uvd_jts_29/64 - 0.5
+                pred_uvd_jts_29 = pred_uvd_jts_29/64 - 0.5
+
+                init_shape = self.init_shape.expand(batch_size, -1)     # (B, 10,)  <- [10]
+                init_cam = self.init_cam.expand(batch_size, -1)  # (B, 1,)
+                delta_shape = self.decshape(feat)  # [1, 10] <- [1,2048]
+                pred_shape = delta_shape + init_shape  # beta
+                pred_phi = self.decphi(feat)  # [1,46] <- conv[2048,46] [1,2048]
+                pred_camera = self.deccam(feat).reshape(batch_size, -1) + init_cam  # [1,1]
+                sigma = self.decsigma(feat).reshape(batch_size, 29, 1).sigmoid()  # [1, 29,1]
+
+                pred_phi = pred_phi.reshape(batch_size, 23, 2)  # [1, 23, 2]
+                # print('feat min: ', feat.detach().min().cpu().numpy(), ' feat max: ', feat.detach().max().cpu().numpy(), \
+                #         ' camera_scale: ', pred_camera.detach().cpu().numpy()[0,0])
+            else:  # dev flip_test
+                scores = []
+                img_feat_joints = []
+                img_flip_feat_joints = []
+                for j in range(29):
+                    x = coord_x[:,j,0] / (self.width_dim - 1) * 2 - 1  # TODO *2-1是什么意思，前面的部分相当于该点在图片的x轴百分比 0.2892
+                    y = coord_y[:,j,0] / (self.height_dim - 1) * 2 - 1  # 0.2934  # 
+                    z = coord_z[:,j,0] / (self.depth_dim - 1) * 2 - 1  # 0.1429  [1,29,1] 之间-1~1
+                    # 得到关节点置信度
+                    grid = torch.stack((x, y, z), 1)[:, None, None, None, :]  # torch.stack((x, y, z), 1) [1,3] grid [1,1,1,1,3]
+                    score_j = F.grid_sample(heatmaps[:, j, None, :, :, :], grid, align_corners=True)[:, 0, 0, 0, 0]  # score_j [1(batchsize)] 因为batch_size=1,(batch_size) oint_heatmap[:, j, None, :, :, :] [N,1,64,64,64] -> [N,1,1,1,1]
+                    scores.append(score_j)  # TODO grid_sample
+
+                    # 根据关节点在图像特征进行采样
+                    img_feat = x0.float()
+                    img_flip_feat = flip_x0.float()
+                    img_grid = torch.stack((x, y), 1)[:, None, None, :] # [N,1,1,2] <- [N,2]
+
+                    img_feat_j = F.grid_sample(img_feat, img_grid, align_corners=True)[:, :, 0, 0]  # (batch_size, channel_dim) [1,2048]
+                    img_feat_joints.append(img_feat_j)
+
+                    img_flip_feat_j = F.grid_sample(img_flip_feat, img_grid, align_corners=True)[:, :, 0, 0]  # (batch_size, channel_dim) [1,2048]
+                    img_flip_feat_joints.append(img_flip_feat_j)
+
+                scores = torch.stack(scores)  # (joint_num, batch_size)  [29,1]  [tensor,tensor...]15个tensor, stack默认0所以是[15,1]如果是1则是[1,15]
+                joint_score = scores.permute(1, 0)[:, :, None]  # (batch_size, joint_num, 1)  [1,29,1]
+                pred_uvd_jts_29 = torch.cat((coord_x, coord_y, coord_z), dim=2)  # 0, 64
+
+                img_feat_joints = torch.stack(img_feat_joints) # (joint_num, batch_size, channel_dim) [15,1,2048]
+                img_feat_joints = img_feat_joints.permute(1, 0 ,2) # (batch_size, joint_num, channel_dim) [1,15,2048]
+                feat = torch.cat((img_feat_joints, pred_uvd_jts_29, joint_score), dim=2)  # [1,15,2052(C'+3+1=2048+3+1=2052)]
+                feat = feat.view(x0.size(0), -1)  # [1, 59508]
+                feat = self.dejoint(feat)  # 【1，2048】<- [1, 59508] conv(59508,2048)
+                feat = (feat-feat.min(-1).values.view(-1,1))/(feat.max(-1).values.view(-1,1)-feat.min(-1).values.view(-1,1))
+                # feat = torch.sigmoid(feat)
+                # print('before feat min: ', feat.detach().min().cpu().numpy(), ' feat max: ', feat.detach().max().cpu().numpy())
+
+                img_flip_feat_joints = torch.stack(img_flip_feat_joints) # (joint_num, batch_size, channel_dim) [15,1,2048]
+                img_flip_feat_joints = img_flip_feat_joints.permute(1, 0 ,2) # (batch_size, joint_num, channel_dim) [1,15,2048]
+                flip_feat = torch.cat((img_flip_feat_joints, pred_uvd_jts_29, joint_score), dim=2)  # [1,15,2052(C'+3+1=2048+3+1=2052)]
+                flip_feat = flip_feat.view(x0.size(0), -1)  # [1, 59508]
+                flip_feat = self.dejoint(flip_feat)  # 【1，2048】<- [1, 59508] conv(59508,2048)
+                flip_feat = (flip_feat-flip_feat.min(-1).values.view(-1,1))/(flip_feat.max(-1).values.view(-1,1)-flip_feat.min(-1).values.view(-1,1))
+                # feat = torch.sigmoid(feat)
+                # 和softmax替换
+
+                pred_uvd_jts_29 = pred_uvd_jts_29/64 - 0.5
+
+                # feat = feat.view(x0.size(0), -1)  # [1, 2048]
+                init_shape = self.init_shape.expand(batch_size, -1)     # (B, 10,)  <- [10]
+                init_cam = self.init_cam.expand(batch_size, -1)  # (B, 1,)
+
+                # 正常预测
+                delta_shape = self.decshape(feat)  # [1, 10] <- [1,2048]
+                pred_shape = delta_shape + init_shape  # beta
+                pred_phi = self.decphi(feat).reshape(batch_size, 23, 2)  # [1,46] <- conv[2048,46] [1,2048]
+                pred_camera = self.deccam(feat).reshape(batch_size, -1) + init_cam  # [1,1]
+                sigma = self.decsigma(feat).reshape(batch_size, 29, 1).sigmoid()  # [1, 29,1]
+
+                # print('feat min: ', feat.detach().min().cpu().numpy(), ' feat max: ', feat.detach().max().cpu().numpy(), \
+                #         ' camera_scale: ', pred_camera.detach().cpu().numpy()[0,0])
+
+                # flip预测
+                flip_delta_shape = self.decshape(flip_feat)
+                flip_pred_shape = flip_delta_shape + init_shape
+                flip_pred_phi = self.decphi(flip_feat).reshape(batch_size, 23, 2)
+                flip_pred_camera = self.deccam(flip_feat).reshape(batch_size, -1) + init_cam  # 相机s
+                flip_sigma = self.decsigma(flip_feat).reshape(batch_size, 29, 1).sigmoid()
+
+                pred_shape = (pred_shape + flip_pred_shape) / 2
+
+                flip_pred_phi = self.flip_phi(flip_pred_phi)
+                pred_phi = (pred_phi + flip_pred_phi) / 2
+
+                pred_camera = 2 / (1 / flip_pred_camera + 1 / pred_camera)
+
+                flip_sigma = self.flip_sigma(flip_sigma)
+                sigma = (sigma + flip_sigma) / 2
         else:
             # 正常
             #  -0.5 ~ 0.5
@@ -338,36 +429,38 @@ class HRNetSMPLCam(nn.Module):
             pred_uvd_jts_29 = torch.cat((coord_x, coord_y, coord_z), dim=2)  # [1, 29, 3]
 
             # feat = feat.view(x0.size(0), -1)  # [1, 2048]
-        init_shape = self.init_shape.expand(batch_size, -1)     # (B, 10,)  <- [10]
-        init_cam = self.init_cam.expand(batch_size, -1)  # (B, 1,)
-        delta_shape = self.decshape(feat)  # [1, 10] <- [1,2048]
-        pred_shape = delta_shape + init_shape  # beta
-        pred_phi = self.decphi(feat)  # [1,46] <- conv[2048,46] [1,2048]
-        pred_camera = self.deccam(feat).reshape(batch_size, -1) + init_cam  # [1,1]
-        sigma = self.decsigma(feat).reshape(batch_size, 29, 1).sigmoid()  # [1, 29,1]
+            init_shape = self.init_shape.expand(batch_size, -1)     # (B, 10,)  <- [10]
+            init_cam = self.init_cam.expand(batch_size, -1)  # (B, 1,)
 
-        pred_phi = pred_phi.reshape(batch_size, 23, 2)  # [1, 23, 2]
-        # print('feat min: ', feat.detach().min().cpu().numpy(), ' feat max: ', feat.detach().max().cpu().numpy(), \
-        #         ' camera_scale: ', pred_camera.detach().cpu().numpy()[0,0])
+            delta_shape = self.decshape(feat)  # [1, 10] <- [1,2048]
+            pred_shape = delta_shape + init_shape  # beta
+            pred_phi = self.decphi(feat)  # [1,46] <- conv[2048,46] [1,2048]
+            pred_camera = self.deccam(feat).reshape(batch_size, -1) + init_cam  # [1,1]
+            sigma = self.decsigma(feat).reshape(batch_size, 29, 1).sigmoid()  # [1, 29,1]
 
-        if flip_test:
+            pred_phi = pred_phi.reshape(batch_size, 23, 2)  # [1, 23, 2]
+            # print('feat min: ', feat.detach().min().cpu().numpy(), ' feat max: ', feat.detach().max().cpu().numpy(), \
+            #         ' camera_scale: ', pred_camera.detach().cpu().numpy()[0,0])
 
-            flip_delta_shape = self.decshape(flip_x0)
-            flip_pred_shape = flip_delta_shape + init_shape
-            flip_pred_phi = self.decphi(flip_x0)
-            flip_pred_camera = self.deccam(flip_x0).reshape(batch_size, -1) + init_cam  # 相机s
-            flip_sigma = self.decsigma(flip_x0).reshape(batch_size, 29, 1).sigmoid()
+            if flip_test:
 
-            pred_shape = (pred_shape + flip_pred_shape) / 2
+                flip_delta_shape = self.decshape(flip_x0)
+                flip_pred_shape = flip_delta_shape + init_shape
+                flip_pred_phi = self.decphi(flip_x0)
+                flip_pred_camera = self.deccam(flip_x0).reshape(batch_size, -1) + init_cam  # 相机s
+                flip_sigma = self.decsigma(flip_x0).reshape(batch_size, 29, 1).sigmoid()
 
-            flip_pred_phi = flip_pred_phi.reshape(batch_size, 23, 2)
-            flip_pred_phi = self.flip_phi(flip_pred_phi)
-            pred_phi = (pred_phi + flip_pred_phi) / 2
+                pred_shape = (pred_shape + flip_pred_shape) / 2
 
-            pred_camera = 2 / (1 / flip_pred_camera + 1 / pred_camera)
+                flip_pred_phi = flip_pred_phi.reshape(batch_size, 23, 2)
+                flip_pred_phi = self.flip_phi(flip_pred_phi)
+                pred_phi = (pred_phi + flip_pred_phi) / 2
 
-            flip_sigma = self.flip_sigma(flip_sigma)
-            sigma = (sigma + flip_sigma) / 2
+                pred_camera = 2 / (1 / flip_pred_camera + 1 / pred_camera)
+
+                flip_sigma = self.flip_sigma(flip_sigma)
+                sigma = (sigma + flip_sigma) / 2
+
 
         camScale = pred_camera[:, :1].unsqueeze(1)  # [1,1,1] 0.4902
         # camTrans = pred_camera[:, 1:].unsqueeze(1)

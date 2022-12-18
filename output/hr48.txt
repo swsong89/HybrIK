@@ -66,6 +66,7 @@ Test result is saved at exp/test_3d_kpt.json
 Loading model from pretrained_model/hybrik_hrnet48_w3dpw.pth...
 ##### Testing on 3DPW #####
 opt.flip_test:  False
+3DPW 42.96 72.65 84.26 h36m  30.69 MPJPE: 48.30
 batch_size:  8
 100%|███████████████████████████████████████████████████████████| 4440/4440 [13:10<00:00,  5.62it/s]
 Evaluation start...

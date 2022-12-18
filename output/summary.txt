@@ -1,0 +1,14 @@
+论文                       3DPW   h36m
+HybrIK (ResNet-34)        	48.8	34.5
+HybrIK (ResNet-34) w. 3DPW	45.3	36.3
+提供的模型复现                45.92  34.87
+
+model                               3DPWPA    MPJPE   h36mPA    MPJPE
+HRNet-W48	w/o 3DPW	                48.6	    88.0	  29.5	    50.4	
+HRNet-W48	w/ 3DPW	                  41.8	    71.3	  29.8	    47.1
+提供的模型复现                        42.96     72.65   30.69     48.29
+自己复现98 epoch                      44.69      -      36.52     -
+自己在提供的模型基础上再进行训练30 epoch  41.31      -      29.76     -
+在HRNet-W48的基础上增加DA注意力39 epoch 43.50             31.15
+dev_sampl 2 epoch flip false        44.26                  32.80
+dev_sampl 2 epoch flip true         42.67     72.47    31.25    48.33                 3DPW PVE 83.24

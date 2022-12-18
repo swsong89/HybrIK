@@ -442,7 +442,7 @@ def main_worker(gpu, opt, cfg):
         files = os.listdir(checkpoint_path)
         try:
             max_checkpoint_path = max(files)
-            print('max_checkpoint_path: ', max_checkpoint_path)
+            logger.info('max_checkpoint_path: ' + max_checkpoint_path)
             begin_epoch = int(max_checkpoint_path.split('/')[-1].replace('.pth', '').split('_')[1]) + 1  # epoch_1_iter_2,从epoch下一个开始
             cfg.TRAIN.BEGIN_EPOCH = begin_epoch
             cfg.MODEL.PRETRAINED = checkpoint_path + '/' + max_checkpoint_path
