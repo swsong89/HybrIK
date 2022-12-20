@@ -10,8 +10,9 @@ from .layers.smpl.SMPL import SMPL_layer
 from .layers.hrnet.hrnet import get_hrnet
 
 is_dev_sample = False
-
+is_dev_relu = False
 is_dev_sample = True
+is_dev_relu = True
 
 def flip(x):
     assert (x.dim() == 3 or x.dim() == 4)
@@ -155,6 +156,8 @@ class HRNetSMPLCam(nn.Module):
             # #     GraphResBlock(self.graph_adj, 128),
             # #     GraphResBlock(self.graph_adj, 128),
             # #     GraphResBlock(self.graph_adj, 128)])
+            if is_dev_relu:
+              self.relu = nn.ReLU(True)
             self.dejoint = nn.Linear(29*(2048+4), 1024)
             self.decshape = nn.Linear(1024, 10)
             self.decphi = nn.Linear(1024, 23 * 2)  # [cos(phi), sin(phi)]
@@ -300,9 +303,9 @@ class HRNetSMPLCam(nn.Module):
                 scores = []
                 img_feat_joints = []
                 for j in range(29):
-                    x = coord_x[:,j,0] / (self.width_dim - 1) * 2 - 1  # TODO *2-1是什么意思，前面的部分相当于该点在图片的x轴百分比 0.2892
-                    y = coord_y[:,j,0] / (self.height_dim - 1) * 2 - 1  # 0.2934  # 
-                    z = coord_z[:,j,0] / (self.depth_dim - 1) * 2 - 1  # 0.1429  [1,29,1] 之间-1~1
+                    x = (coord_x[:,j,0] / self.width_dim - 0.5) * 2 # TODO *2-1是什么意思，前面的部分相当于该点在图片的x轴百分比 0.2892
+                    y = (coord_y[:,j,0] / self.width_dim - 0.5) * 2  # 0.2934  # 
+                    z = (coord_z[:,j,0] / self.width_dim - 0.5) * 2  # 0.1429  [1,29,1] 之间-1~1
                     # 得到关节点置信度
                     grid = torch.stack((x, y, z), 1)[:, None, None, None, :]  # torch.stack((x, y, z), 1) [1,3] grid [1,1,1,1,3]
                     score_j = F.grid_sample(heatmaps[:, j, None, :, :, :], grid, align_corners=True)[:, 0, 0, 0, 0]  # score_j [1(batchsize)] 因为batch_size=1,(batch_size) oint_heatmap[:, j, None, :, :, :] [N,1,64,64,64] -> [N,1,1,1,1]
@@ -324,7 +327,14 @@ class HRNetSMPLCam(nn.Module):
                 # print('before feat min: ', feat.detach().min().cpu().numpy(), ' feat max: ', feat.detach().max().cpu().numpy())
                 # feat = torch.sigmoid(feat)
                 # 和softmax替换
-                feat = (feat-feat.min(-1).values.view(-1,1))/(feat.max(-1).values.view(-1,1)-feat.min(-1).values.view(-1,1))
+                if is_dev_relu:
+                    feat = self.relu(feat)
+                    feat = (torch.sigmoid(feat)-0.5)*2
+                    # feat = self.relu()
+                    # torch.tanh(feat, feat)
+
+                else:
+                    feat = (feat-feat.min(-1).values.view(-1,1))/(feat.max(-1).values.view(-1,1)-feat.min(-1).values.view(-1,1))
 
                 pred_uvd_jts_29 = pred_uvd_jts_29/64 - 0.5
 
@@ -337,16 +347,16 @@ class HRNetSMPLCam(nn.Module):
                 sigma = self.decsigma(feat).reshape(batch_size, 29, 1).sigmoid()  # [1, 29,1]
 
                 pred_phi = pred_phi.reshape(batch_size, 23, 2)  # [1, 23, 2]
-                # print('feat min: ', feat.detach().min().cpu().numpy(), ' feat max: ', feat.detach().max().cpu().numpy(), \
-                #         ' camera_scale: ', pred_camera.detach().cpu().numpy()[0,0])
+                print('dev feat min: ', feat.detach().min().cpu().numpy(), ' feat max: ', feat.detach().max().cpu().numpy(), \
+                        ' camera_scale: ', pred_camera.detach().cpu().numpy()[0,0])
             else:  # dev flip_test
                 scores = []
                 img_feat_joints = []
                 img_flip_feat_joints = []
                 for j in range(29):
-                    x = coord_x[:,j,0] / (self.width_dim - 1) * 2 - 1  # TODO *2-1是什么意思，前面的部分相当于该点在图片的x轴百分比 0.2892
-                    y = coord_y[:,j,0] / (self.height_dim - 1) * 2 - 1  # 0.2934  # 
-                    z = coord_z[:,j,0] / (self.depth_dim - 1) * 2 - 1  # 0.1429  [1,29,1] 之间-1~1
+                    x = (coord_x[:,j,0] / self.width_dim - 0.5) * 2 # TODO *2-1是什么意思，前面的部分相当于该点在图片的x轴百分比 0.2892
+                    y = (coord_y[:,j,0] / self.width_dim - 0.5) * 2  # 0.2934  # 
+                    z = (coord_z[:,j,0] / self.width_dim - 0.5) * 2  # 0.1429  [1,29,1] 之间-1~1
                     # 得到关节点置信度
                     grid = torch.stack((x, y, z), 1)[:, None, None, None, :]  # torch.stack((x, y, z), 1) [1,3] grid [1,1,1,1,3]
                     score_j = F.grid_sample(heatmaps[:, j, None, :, :, :], grid, align_corners=True)[:, 0, 0, 0, 0]  # score_j [1(batchsize)] 因为batch_size=1,(batch_size) oint_heatmap[:, j, None, :, :, :] [N,1,64,64,64] -> [N,1,1,1,1]
@@ -365,15 +375,17 @@ class HRNetSMPLCam(nn.Module):
 
                 scores = torch.stack(scores)  # (joint_num, batch_size)  [29,1]  [tensor,tensor...]15个tensor, stack默认0所以是[15,1]如果是1则是[1,15]
                 joint_score = scores.permute(1, 0)[:, :, None]  # (batch_size, joint_num, 1)  [1,29,1]
-                pred_uvd_jts_29 = torch.cat((coord_x, coord_y, coord_z), dim=2)  # 0, 64
 
                 img_feat_joints = torch.stack(img_feat_joints) # (joint_num, batch_size, channel_dim) [15,1,2048]
                 img_feat_joints = img_feat_joints.permute(1, 0 ,2) # (batch_size, joint_num, channel_dim) [1,15,2048]
                 feat = torch.cat((img_feat_joints, pred_uvd_jts_29, joint_score), dim=2)  # [1,15,2052(C'+3+1=2048+3+1=2052)]
                 feat = feat.view(x0.size(0), -1)  # [1, 59508]
                 feat = self.dejoint(feat)  # 【1，2048】<- [1, 59508] conv(59508,2048)
-                feat = (feat-feat.min(-1).values.view(-1,1))/(feat.max(-1).values.view(-1,1)-feat.min(-1).values.view(-1,1))
-                # feat = torch.sigmoid(feat)
+                if is_dev_relu:
+                    feat = self.relu(feat)
+                    feat = (torch.sigmoid(feat)-0.5)*2
+                else:
+                    feat = (feat-feat.min(-1).values.view(-1,1))/(feat.max(-1).values.view(-1,1)-feat.min(-1).values.view(-1,1))                # feat = torch.sigmoid(feat)
                 # print('before feat min: ', feat.detach().min().cpu().numpy(), ' feat max: ', feat.detach().max().cpu().numpy())
 
                 img_flip_feat_joints = torch.stack(img_flip_feat_joints) # (joint_num, batch_size, channel_dim) [15,1,2048]
@@ -381,8 +393,11 @@ class HRNetSMPLCam(nn.Module):
                 flip_feat = torch.cat((img_flip_feat_joints, pred_uvd_jts_29, joint_score), dim=2)  # [1,15,2052(C'+3+1=2048+3+1=2052)]
                 flip_feat = flip_feat.view(x0.size(0), -1)  # [1, 59508]
                 flip_feat = self.dejoint(flip_feat)  # 【1，2048】<- [1, 59508] conv(59508,2048)
-                flip_feat = (flip_feat-flip_feat.min(-1).values.view(-1,1))/(flip_feat.max(-1).values.view(-1,1)-flip_feat.min(-1).values.view(-1,1))
-                # feat = torch.sigmoid(feat)
+                if is_dev_relu:
+                    feat = self.relu(feat)
+                    feat = (torch.sigmoid(feat)-0.5)*2
+                else:
+                    flip_feat = (flip_feat-flip_feat.min(-1).values.view(-1,1))/(flip_feat.max(-1).values.view(-1,1)-flip_feat.min(-1).values.view(-1,1))                # feat = torch.sigmoid(feat)
                 # 和softmax替换
 
                 pred_uvd_jts_29 = pred_uvd_jts_29/64 - 0.5
@@ -439,7 +454,7 @@ class HRNetSMPLCam(nn.Module):
             sigma = self.decsigma(feat).reshape(batch_size, 29, 1).sigmoid()  # [1, 29,1]
 
             pred_phi = pred_phi.reshape(batch_size, 23, 2)  # [1, 23, 2]
-            # print('feat min: ', feat.detach().min().cpu().numpy(), ' feat max: ', feat.detach().max().cpu().numpy(), \
+            # print('normal feat min: ', feat.detach().min().cpu().numpy(), ' feat max: ', feat.detach().max().cpu().numpy(), \
             #         ' camera_scale: ', pred_camera.detach().cpu().numpy()[0,0])
 
             if flip_test:
