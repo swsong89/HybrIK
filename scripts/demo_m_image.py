@@ -49,13 +49,17 @@ parser.add_argument('--out-dir',
                     help='output folder',
                     default='',
                     type=str)
+parser.add_argument('--flip',
+                    help='flip',
+                    default=True,
+                    action='store_true')
 opt = parser.parse_args()
 
 
 # cfg_file = 'configs/256x192_adam_lr1e-3-res34_smpl_3d_cam_2x_mix_w_pw3d.yaml'
 # CKPT = './pretrained_w_cam.pth'
-cfg_file = 'configs/256x192_adam_lr1e_3_hrw48_cam_2x_w_pw3d_3dhp.yaml'
-CKPT = 'pretrained_model/pretrained_hr48.pth'
+cfg_file = 'configs/256x192_adam_lr1e_3_hrw48_cam_2x_w_pw3d_3dhp_dev_sample.yaml'
+CKPT = 'pretrained_model/epoch_1_z_h36m_32.40_3dpw_44.88.pth'
 cfg = update_config(cfg_file)
 
 bbox_3d_shape = getattr(cfg.MODEL, 'BBOX_3D_SHAPE', (2000, 2000, 2000))
@@ -67,10 +71,12 @@ dummpy_set = edict({
     'bbox_3d_shape': bbox_3d_shape
 })
 
+print('flip: ', opt.flip)
 transformation = SimpleTransform3DSMPLCam(
     dummpy_set, scale_factor=cfg.DATASET.SCALE_FACTOR,
     color_factor=cfg.DATASET.COLOR_FACTOR,
     occlusion=cfg.DATASET.OCCLUSION,
+    flip = opt.flip,
     input_size=cfg.MODEL.IMAGE_SIZE,
     output_size=cfg.MODEL.HEATMAP_SIZE,
     depth_dim=cfg.MODEL.EXTRA.DEPTH_DIM,

@@ -118,3 +118,4 @@ yolov3_pytorch_master
 *.zip
 *.sh
 *.ipynb
+demo_all

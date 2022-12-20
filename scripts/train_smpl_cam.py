@@ -79,7 +79,9 @@ def train(m, opt, train_loader, criterion, optimizer, writer, epoch, cfg, gt_val
         transofr_img_vis_height = transofr_img_height*vis_ratio
         bboxes = [0, transofr_img_vis_height, transofr_img_vis_height, 0]  # 左下角 右上角 左上角原点，往右x轴，往下y轴
         if opt.debug:
-            for i in range(len(img_paths)):
+            for i in range(1):  # 只可视化一张
+
+            # for i in range(len(img_paths)):
                 # transofr_img vis
                 img = inps[i].detach().cpu()
                 transfor_img = torch_std_to_img(img)

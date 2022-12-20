@@ -16,4 +16,4 @@ video 多人 --out-dir demo/output
 python scripts/demo_m_video.py --video-name demo/dance.mp4
 
 image 多人
-python scripts/demo_m_image.py --img demo/crowd1.jpg  --out-dir demo/test
+python scripts/demo_m_image.py   --out-dir demo_dev_sample_relu/test --img demo_dev_sample_relu/images/crowd1.jpg
