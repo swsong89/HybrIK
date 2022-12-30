@@ -11,8 +11,9 @@ from .layers.hrnet.hrnet import get_hrnet
 
 is_dev_sample = False
 is_dev_relu = False
+
 is_dev_sample = True
-is_dev_relu = True
+# is_dev_relu = True
 
 def flip(x):
     assert (x.dim() == 3 or x.dim() == 4)
@@ -158,7 +159,8 @@ class HRNetSMPLCam(nn.Module):
             # #     GraphResBlock(self.graph_adj, 128)])
             if is_dev_relu:
               self.relu = nn.ReLU(True)
-            self.dejoint = nn.Linear(29*(2048+4), 1024)
+            self.num_joint = 29
+            self.dejoint = nn.Linear(self.num_joint*(2048+4), 1024)
             self.decshape = nn.Linear(1024, 10)
             self.decphi = nn.Linear(1024, 23 * 2)  # [cos(phi), sin(phi)]
             self.deccam = nn.Linear(1024, 1)
@@ -302,7 +304,7 @@ class HRNetSMPLCam(nn.Module):
             if flip_test == False:
                 scores = []
                 img_feat_joints = []
-                for j in range(29):
+                for j in range(self.num_joints):
                     x = (coord_x[:,j,0] / self.width_dim - 0.5) * 2 # TODO *2-1是什么意思，前面的部分相当于该点在图片的x轴百分比 0.2892
                     y = (coord_y[:,j,0] / self.width_dim - 0.5) * 2  # 0.2934  # 
                     z = (coord_z[:,j,0] / self.width_dim - 0.5) * 2  # 0.1429  [1,29,1] 之间-1~1
@@ -321,7 +323,7 @@ class HRNetSMPLCam(nn.Module):
                 img_feat_joints = torch.stack(img_feat_joints) # (joint_num, batch_size, channel_dim) [15,1,2048]
                 img_feat_joints = img_feat_joints.permute(1, 0 ,2) # (batch_size, joint_num, channel_dim) [1,15,2048]
                 pred_uvd_jts_29 = torch.cat((coord_x, coord_y, coord_z), dim=2)  # 0, 64
-                feat = torch.cat((img_feat_joints, pred_uvd_jts_29, joint_score), dim=2)  # [1,15,2052(C'+3+1=2048+3+1=2052)]
+                feat = torch.cat((img_feat_joints, pred_uvd_jts_29[:,:self.num_joints], joint_score), dim=2)  # [1,15,2052(C'+3+1=2048+3+1=2052)]
                 feat = feat.view(x0.size(0), -1)  # [1, 59508]
                 feat = self.dejoint(feat)  # 【1，2048】<- [1, 59508] conv(59508,2048)
                 # print('before feat min: ', feat.detach().min().cpu().numpy(), ' feat max: ', feat.detach().max().cpu().numpy())
@@ -332,7 +334,6 @@ class HRNetSMPLCam(nn.Module):
                     feat = (torch.sigmoid(feat)-0.5)*2
                     # feat = self.relu()
                     # torch.tanh(feat, feat)
-
                 else:
                     feat = (feat-feat.min(-1).values.view(-1,1))/(feat.max(-1).values.view(-1,1)-feat.min(-1).values.view(-1,1))
 
@@ -347,8 +348,8 @@ class HRNetSMPLCam(nn.Module):
                 sigma = self.decsigma(feat).reshape(batch_size, 29, 1).sigmoid()  # [1, 29,1]
 
                 pred_phi = pred_phi.reshape(batch_size, 23, 2)  # [1, 23, 2]
-                print('dev feat min: ', feat.detach().min().cpu().numpy(), ' feat max: ', feat.detach().max().cpu().numpy(), \
-                        ' camera_scale: ', pred_camera.detach().cpu().numpy()[0,0])
+                # print('dev feat min: ', feat.detach().min().cpu().numpy(), ' feat max: ', feat.detach().max().cpu().numpy(), \
+                #         ' camera_scale: ', pred_camera.detach().cpu().numpy()[0,0])
             else:  # dev flip_test
                 scores = []
                 img_feat_joints = []
