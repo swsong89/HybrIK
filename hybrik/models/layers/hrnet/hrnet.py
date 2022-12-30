@@ -330,13 +330,17 @@ class PoseHighResolutionNet(nn.Module):
                 self.final_feat_layer = self._make_cls_head(pre_stage_channels)
 
         if self.generate_hm:
+            # 原始的只使用最上层特征即，48，pare将分辨率低的进行上采样合成热力图，但这样网络太大了，根据情况决定是否采样
+            # self.upsample_stage_2 = self._make_upsample_layer(1, num_channel=self.stage2_cfg['NUM_CHANNELS'][-1])
+            # self.upsample_stage_3 = self._make_upsample_layer(2, num_channel=self.stage3_cfg['NUM_CHANNELS'][-1])
+            # self.upsample_stage_4 = self._make_upsample_layer(3, num_channel=self.stage4_cfg['NUM_CHANNELS'][-1])
             self.final_layer = nn.Conv2d(
-                in_channels=pre_stage_channels[0],
+                in_channels=48,
                 out_channels=cfg['MODEL']['NUM_JOINTS'] * cfg['MODEL']['DEPTH_DIM'],
                 kernel_size=extra['FINAL_CONV_KERNEL'],
                 stride=1,
                 padding=1 if extra['FINAL_CONV_KERNEL'] == 3 else 0
-            )  # 48 ->1856=29*64
+            )  # 48 ->1856=29*64   48+96+192+384=720
 
         self.pretrained_layers = extra['PRETRAINED_LAYERS']
 
@@ -429,6 +433,19 @@ class PoseHighResolutionNet(nn.Module):
                 transition_layers.append(nn.Sequential(*conv3x3s))
 
         return nn.ModuleList(transition_layers)
+    def _make_upsample_layer(self, num_layers, num_channel, kernel_size=3):
+        layers = []
+        for i in range(num_layers):
+            layers.append(nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True))
+            layers.append(
+                nn.Conv2d(
+                    in_channels=num_channel, out_channels=num_channel,
+                    kernel_size=kernel_size, stride=1, padding=1, bias=False,
+                )
+            )
+            layers.append(nn.BatchNorm2d(num_channel, momentum=BN_MOMENTUM))
+            layers.append(nn.ReLU(inplace=True))
+        return nn.Sequential(*layers)
 
     def _make_cls_layer(self, block, inplanes, planes, blocks, stride=1):  # inplanes 48  planes 32
         downsample = None
@@ -533,6 +550,11 @@ class PoseHighResolutionNet(nn.Module):
         # y_list[0] = self.Da(y_list[0])[0]  # list有3个，第一个是sum,第二个是c,第三个是p
 
         if self.generate_hm:
+            # y_list1 = self.upsample_stage_2(y_list[1])  # 11, 64, 56, 56 <-  11, 64, 28, 28
+            # y_list2 = self.upsample_stage_3(y_list[2])
+            # y_list3 = self.upsample_stage_4(y_list[3])
+            # y_all = torch.cat([y_list[0], y_list1, y_list2, y_list3], 1)
+            # out_heatmap = self.final_layer(y_all)  # [1, 1856, 64, 64] <- Conv2d(48, 1856) [1,48,64,64]   1856=29*64
             out_heatmap = self.final_layer(y_list[0])  # [1, 1856, 64, 64] <- Conv2d(48, 1856) [1,48,64,64]   1856=29*64
 
             if self.generate_feat:
