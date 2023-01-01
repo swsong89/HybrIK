@@ -279,7 +279,7 @@ class PoseHighResolutionNet(nn.Module):
         extra = cfg['MODEL']['EXTRA']
         super(PoseHighResolutionNet, self).__init__()
 
-        self.generate_feat = kwargs['generate_feat']
+        self.generate_feat = False
         self.generate_hm = kwargs.get('generate_hm', True)
         # stem net
         self.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=2, padding=1,
@@ -555,7 +555,7 @@ class PoseHighResolutionNet(nn.Module):
             # y_list3 = self.upsample_stage_4(y_list[3])
             # y_all = torch.cat([y_list[0], y_list1, y_list2, y_list3], 1)
             # out_heatmap = self.final_layer(y_all)  # [1, 1856, 64, 64] <- Conv2d(48, 1856) [1,48,64,64]   1856=29*64
-            out_heatmap = self.final_layer(y_list[0])  # [1, 1856, 64, 64] <- Conv2d(48, 1856) [1,48,64,64]   1856=29*64
+            out_heatmap = y_list[0]  # [1, 1856, 64, 64] <- Conv2d(48, 1856) [1,48,64,64]   1856=29*64
 
             if self.generate_feat:
                 # Classification Head

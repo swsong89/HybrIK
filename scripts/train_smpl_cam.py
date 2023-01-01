@@ -468,7 +468,7 @@ def main_worker(gpu, opt, cfg):
     m.cuda(opt.gpu)
     global smpl_faces
     smpl_faces = torch.from_numpy(m.smpl.faces.astype(np.int32))
-    m = torch.nn.parallel.DistributedDataParallel(m, device_ids=[opt.gpu])
+    m = torch.nn.parallel.DistributedDataParallel(m, device_ids=[opt.gpu], find_unused_parameters=True)
 
     criterion = builder.build_loss(cfg.LOSS).cuda(opt.gpu)
     optimizer = torch.optim.Adam(m.parameters(), lr=cfg.TRAIN.LR)

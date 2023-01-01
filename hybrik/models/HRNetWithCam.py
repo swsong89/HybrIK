@@ -8,6 +8,7 @@ from torch.nn import functional as F
 from .builder import SPPE
 from .layers.smpl.SMPL import SMPL_layer
 from .layers.hrnet.hrnet import get_hrnet
+from .keypoint_attention import KeypointAttention
 
 is_dev_sample = False
 is_dev_relu = False
@@ -157,10 +158,17 @@ class HRNetSMPLCam(nn.Module):
             # #     GraphResBlock(self.graph_adj, 128),
             # #     GraphResBlock(self.graph_adj, 128),
             # #     GraphResBlock(self.graph_adj, 128)])
+            self.heatmap_conv = nn.Conv2d(
+                        in_channels=48,
+                        out_channels=1856,
+                        kernel_size=1,
+                        stride=1,
+                        padding=0,
+                    )
             if is_dev_relu:
               self.relu = nn.ReLU(True)
             self.num_joint = 29
-            self.dejoint = nn.Linear(self.num_joint*(2048+4), 1024)
+            self.dejoint = nn.Linear(3072, 1024)
             self.decshape = nn.Linear(1024, 10)
             self.decphi = nn.Linear(1024, 23 * 2)  # [cos(phi), sin(phi)]
             self.deccam = nn.Linear(1024, 1)
@@ -177,6 +185,143 @@ class HRNetSMPLCam(nn.Module):
         self.bbox_3d_shape = torch.tensor(bbox_3d_shape).float()
         self.depth_factor = self.bbox_3d_shape[2] * 1e-3
         self.input_size = 256.0
+
+
+        num_deconv_layers=3
+        num_deconv_filters=(256, 256, 256)
+        num_deconv_kernels=(4, 4, 4)
+        use_upsampling = False
+        self.num_input_features = 48  # hrbackbone输出的特征通道维度  1856
+        
+        conv_fn = self._make_upsample_layer if use_upsampling else self._make_deconv_layer
+
+        self.keypoint_deconv_layers = nn.Conv2d(
+                        in_channels=self.num_input_features,
+                        out_channels=128,
+                        kernel_size=3,
+                        stride=1,
+                        padding=1,
+                    )
+
+        self.smpl_deconv_layers = nn.Conv2d(
+                        in_channels=self.num_input_features,
+                        out_channels=128,
+                        kernel_size=3,
+                        stride=1,
+                        padding=1,
+                    )
+
+        self.keypoint_final_layer = nn.Conv2d(
+                        in_channels=128,
+                        out_channels=24+1,
+                        kernel_size=1,
+                        stride=1,
+                        padding=0,
+                    )
+
+        self.keypoint_attention = KeypointAttention(
+                        use_conv=False,
+                        in_channels=(128,64),
+                        out_channels=(128,64),
+                        act='softmax',
+                        use_scale=False,
+                    )
+
+
+    def _get_deconv_cfg(self, deconv_kernel):
+        if deconv_kernel == 4:
+            padding = 1
+            output_padding = 0
+        elif deconv_kernel == 3:
+            padding = 1
+            output_padding = 1
+        elif deconv_kernel == 2:
+            padding = 0
+            output_padding = 0
+        return deconv_kernel, padding, output_padding
+
+    # def _make_upsample_layer(self, num_layers, num_filters, num_kernels):
+    #     assert num_layers == len(num_filters), \
+    #         'ERROR: num_layers is different len(num_filters)'
+    #     assert num_layers == len(num_kernels), \
+    #         'ERROR: num_layers is different len(num_filters)'
+
+    #     layers = []
+    #     for i in range(num_layers):
+    #         kernel, padding, output_padding = \
+    #             self._get_deconv_cfg(num_kernels[i])
+
+    #         planes = num_filters[i]
+    #         layers.append(nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True))
+    #         layers.append(
+    #             nn.Conv2d(in_channels=self.num_input_features, out_channels=planes,
+    #                     kernel_size=kernel, stride=1, padding=padding, bias=False)
+    #         )
+    #         layers.append(nn.BatchNorm2d(planes, momentum=0.1))
+    #         layers.append(nn.ReLU(inplace=True))
+    #         # if self.use_self_attention:
+    #         #     layers.append(SelfAttention(planes))
+    #         self.num_input_features = planes
+    #     return nn.Sequential(*layers)
+
+
+    def _make_deconv_layer(self, num_layers, num_filters, num_kernels):
+        assert num_layers == len(num_filters), \
+            'ERROR: num_deconv_layers is different len(num_deconv_filters)'
+        assert num_layers == len(num_kernels), \
+            'ERROR: num_deconv_layers is different len(num_deconv_filters)'
+
+        layers = []
+        for i in range(num_layers):
+            kernel, padding, output_padding = \
+                self._get_deconv_cfg(num_kernels[i])
+
+            planes = num_filters[i]
+            layers.append(
+                nn.ConvTranspose2d(
+                    in_channels=self.num_input_features,
+                    out_channels=planes,
+                    kernel_size=kernel,
+                    stride=2,
+                    padding=padding,
+                    output_padding=output_padding,
+                    bias=False))
+            layers.append(nn.BatchNorm2d(planes, momentum=0.1))
+            layers.append(nn.ReLU(inplace=True))
+            # if self.use_self_attention:
+            #     layers.append(SelfAttention(planes))
+            self.num_input_features = planes
+
+        return nn.Sequential(*layers)
+
+    def _get_2d_branch_feats(self, features):  # 11, 480, 56, 56
+        part_feats = self.keypoint_deconv_layers(features)  # 11, 128, 56, 56
+        # if self.use_branch_nonlocal:
+        #     part_feats = self.branch_2d_nonlocal(part_feats)
+        return part_feats
+
+    def _get_part_attention_map(self, part_feats):
+        heatmaps = self.keypoint_final_layer(part_feats)  # [11, 25, 56, 56] <- 11, 128, 56, 56
+        heatmaps = heatmaps[:,1:,:,:] # remove the first channel which encodes the background
+        return heatmaps
+
+    def _get_3d_smpl_feats(self, features, part_feats):
+        use_keypoint_features_for_smpl_regression = False
+        if use_keypoint_features_for_smpl_regression:
+            smpl_feats = part_feats
+        else:
+            smpl_feats = self.smpl_deconv_layers(features)  # 11, 128, 56, 56
+        return smpl_feats
+
+    def _get_local_feats(self, smpl_feats, part_attention):  # 11, 128, 56, 56  11, 24, 56, 56
+        # cam_shape_feats = self.smpl_final_layer(smpl_feats)  # 11, 64, 56, 56
+
+        point_local_feat = self.keypoint_attention(smpl_feats, part_attention)  # [N.C.js] 11, 128, 24  <- 11, 128, 56, 56  11, 24, 56, 56
+        # cam_shape_feats = self.keypoint_attention(cam_shape_feats, part_attention)  # [N.C.js] 11, 64, 24 <- 11, 64, 56, 56  11, 24, 56, 56
+        
+        return point_local_feat  # 11, 128, 24   11, 64, 24
+
+
 
     def _initialize(self):
         self.preact.init_weights(self.pretrain_hrnet)
@@ -247,9 +392,10 @@ class HRNetSMPLCam(nn.Module):
         batch_size = x.shape[0]
         # 关节点部分
         # x0 = self.preact(x)
-        out, x0 = self.preact(x)  # [1, 1856, 64, 64] [1, 2048]
+        out = self.preact(x)  # [1, 1856, 64, 64] [1, 2048]
         # print(out.shape)
-        out = out.reshape(batch_size, self.num_joints, self.depth_dim, self.height_dim, self.width_dim)  # [1, 29, 64, 64, 64]
+        heat_out = self.heatmap_conv(out)
+        heat_out = heat_out.reshape(batch_size, self.num_joints, self.depth_dim, self.height_dim, self.width_dim)  # [1, 29, 64, 64, 64]
 
         if flip_test:
             flip_x = flip(x)  # 图片左右翻转[-0.9678, -0.9853, -1.0027,  ..., -1.3687, -1.4036, -1.4384] <- [-1.4384, -1.4036, -1.3687,  ..., -1.0027, -0.9853, -0.9678]
@@ -267,9 +413,9 @@ class HRNetSMPLCam(nn.Module):
             heatmaps = (heatmaps + flip_heatmaps) / 2
 
         else:
-            out = out.reshape((out.shape[0], self.num_joints, -1))
+            heat_out = heat_out.reshape((out.shape[0], self.num_joints, -1))
 
-            heatmaps = norm_heatmap(self.norm_type, out)
+            heatmaps = norm_heatmap(self.norm_type, heat_out)
 
         assert heatmaps.dim() == 3, heatmaps.shape
         # assert hypo_heatmaps.dim() == 4, heatmaps.shape
@@ -299,32 +445,23 @@ class HRNetSMPLCam(nn.Module):
         coord_z = hm_z0.matmul(range_tensor)
 
 
+
+
         # 采样
         if is_dev_sample:
             if flip_test == False:
-                scores = []
-                img_feat_joints = []
-                for j in range(self.num_joints):
-                    x = (coord_x[:,j,0] / self.width_dim - 0.5) * 2 # TODO *2-1是什么意思，前面的部分相当于该点在图片的x轴百分比 0.2892
-                    y = (coord_y[:,j,0] / self.width_dim - 0.5) * 2  # 0.2934  # 
-                    z = (coord_z[:,j,0] / self.width_dim - 0.5) * 2  # 0.1429  [1,29,1] 之间-1~1
-                    # 得到关节点置信度
-                    grid = torch.stack((x, y, z), 1)[:, None, None, None, :]  # torch.stack((x, y, z), 1) [1,3] grid [1,1,1,1,3]
-                    score_j = F.grid_sample(heatmaps[:, j, None, :, :, :], grid, align_corners=True)[:, 0, 0, 0, 0]  # score_j [1(batchsize)] 因为batch_size=1,(batch_size) oint_heatmap[:, j, None, :, :, :] [N,1,64,64,64] -> [N,1,1,1,1]
-                    scores.append(score_j)  # TODO grid_sample
+                # 只是简单的将基于关键点的特征提取换成pare部分，具体代码还得修改
+                out = out.reshape((out.shape[0], -1, 64, 64))
+                part_feats = self._get_2d_branch_feats(out)  #  11, 128, 56, 56 <- features 11, 480, 56, 56
 
-                    # 根据关节点在图像特征进行采样
-                    img_feat = x0.float()
-                    img_grid = torch.stack((x, y), 1)[:, None, None, :] # [N,1,1,2] <- [N,2]
-                    img_feat_j = F.grid_sample(img_feat, img_grid, align_corners=True)[:, :, 0, 0]  # (batch_size, channel_dim) [1,2048]
-                    img_feat_joints.append(img_feat_j)
-                scores = torch.stack(scores)  # (joint_num, batch_size)  [29,1]  [tensor,tensor...]15个tensor, stack默认0所以是[15,1]如果是1则是[1,15]
-                joint_score = scores.permute(1, 0)[:, :, None]  # (batch_size, joint_num, 1)  [1,29,1]
-                img_feat_joints = torch.stack(img_feat_joints) # (joint_num, batch_size, channel_dim) [15,1,2048]
-                img_feat_joints = img_feat_joints.permute(1, 0 ,2) # (batch_size, joint_num, channel_dim) [1,15,2048]
-                pred_uvd_jts_29 = torch.cat((coord_x, coord_y, coord_z), dim=2)  # 0, 64
-                feat = torch.cat((img_feat_joints, pred_uvd_jts_29[:,:self.num_joints], joint_score), dim=2)  # [1,15,2052(C'+3+1=2048+3+1=2052)]
-                feat = feat.view(x0.size(0), -1)  # [1, 59508]
+                ############## GET PART ATTENTION MAP ##############
+                part_attention = self._get_part_attention_map(part_feats)  # 11, 24, 56, 56  <- 11, 128, 56, 56 , 25第一个是mask,所以24
+
+                ############## 3D SMPL BRANCH FEATURES ##############
+                smpl_feats = self._get_3d_smpl_feats(out, part_feats)  # 使用out进行翻卷积或者使用part_feat来相乘，后这就是相同特征进行attetion且相乘
+                point_local_feat = self._get_local_feats(smpl_feats, part_attention)  # [16384, 24] 11, 128, 24   11, 64, 24  <- 11, 128, 56, 56  11, 24, 56, 56
+                # feat = torch.cat((img_feat_joints, pred_uvd_jts_29, joint_score), dim=2)  # [1,15,2052(C'+3+1=2048+3+1=2052)]
+                feat = point_local_feat.view(out.size(0), -1)  # [1, 59508]
                 feat = self.dejoint(feat)  # 【1，2048】<- [1, 59508] conv(59508,2048)
                 # print('before feat min: ', feat.detach().min().cpu().numpy(), ' feat max: ', feat.detach().max().cpu().numpy())
                 # feat = torch.sigmoid(feat)
@@ -336,7 +473,7 @@ class HRNetSMPLCam(nn.Module):
                     # torch.tanh(feat, feat)
                 else:
                     feat = (feat-feat.min(-1).values.view(-1,1))/(feat.max(-1).values.view(-1,1)-feat.min(-1).values.view(-1,1))
-
+                pred_uvd_jts_29 = torch.cat([coord_x, coord_y, coord_z], -1)
                 pred_uvd_jts_29 = pred_uvd_jts_29/64 - 0.5
 
                 init_shape = self.init_shape.expand(batch_size, -1)     # (B, 10,)  <- [10]
@@ -351,36 +488,17 @@ class HRNetSMPLCam(nn.Module):
                 # print('dev feat min: ', feat.detach().min().cpu().numpy(), ' feat max: ', feat.detach().max().cpu().numpy(), \
                 #         ' camera_scale: ', pred_camera.detach().cpu().numpy()[0,0])
             else:  # dev flip_test
-                scores = []
-                img_feat_joints = []
-                img_flip_feat_joints = []
-                for j in range(29):
-                    x = (coord_x[:,j,0] / self.width_dim - 0.5) * 2 # TODO *2-1是什么意思，前面的部分相当于该点在图片的x轴百分比 0.2892
-                    y = (coord_y[:,j,0] / self.width_dim - 0.5) * 2  # 0.2934  # 
-                    z = (coord_z[:,j,0] / self.width_dim - 0.5) * 2  # 0.1429  [1,29,1] 之间-1~1
-                    # 得到关节点置信度
-                    grid = torch.stack((x, y, z), 1)[:, None, None, None, :]  # torch.stack((x, y, z), 1) [1,3] grid [1,1,1,1,3]
-                    score_j = F.grid_sample(heatmaps[:, j, None, :, :, :], grid, align_corners=True)[:, 0, 0, 0, 0]  # score_j [1(batchsize)] 因为batch_size=1,(batch_size) oint_heatmap[:, j, None, :, :, :] [N,1,64,64,64] -> [N,1,1,1,1]
-                    scores.append(score_j)  # TODO grid_sample
+                out = out.reshape((out.shape[0], -1, 64, 64))
+                part_feats = self._get_2d_branch_feats(out)  #  11, 128, 56, 56 <- features 11, 480, 56, 56
 
-                    # 根据关节点在图像特征进行采样
-                    img_feat = x0.float()
-                    img_flip_feat = flip_x0.float()
-                    img_grid = torch.stack((x, y), 1)[:, None, None, :] # [N,1,1,2] <- [N,2]
+                ############## GET PART ATTENTION MAP ##############
+                part_attention = self._get_part_attention_map(part_feats)  # 11, 24, 56, 56  <- 11, 128, 56, 56 , 25第一个是mask,所以24
 
-                    img_feat_j = F.grid_sample(img_feat, img_grid, align_corners=True)[:, :, 0, 0]  # (batch_size, channel_dim) [1,2048]
-                    img_feat_joints.append(img_feat_j)
-
-                    img_flip_feat_j = F.grid_sample(img_flip_feat, img_grid, align_corners=True)[:, :, 0, 0]  # (batch_size, channel_dim) [1,2048]
-                    img_flip_feat_joints.append(img_flip_feat_j)
-
-                scores = torch.stack(scores)  # (joint_num, batch_size)  [29,1]  [tensor,tensor...]15个tensor, stack默认0所以是[15,1]如果是1则是[1,15]
-                joint_score = scores.permute(1, 0)[:, :, None]  # (batch_size, joint_num, 1)  [1,29,1]
-
-                img_feat_joints = torch.stack(img_feat_joints) # (joint_num, batch_size, channel_dim) [15,1,2048]
-                img_feat_joints = img_feat_joints.permute(1, 0 ,2) # (batch_size, joint_num, channel_dim) [1,15,2048]
-                feat = torch.cat((img_feat_joints, pred_uvd_jts_29, joint_score), dim=2)  # [1,15,2052(C'+3+1=2048+3+1=2052)]
-                feat = feat.view(x0.size(0), -1)  # [1, 59508]
+                ############## 3D SMPL BRANCH FEATURES ##############
+                smpl_feats = self._get_3d_smpl_feats(out, part_feats)  # 使用out进行翻卷积或者使用part_feat来相乘，后这就是相同特征进行attetion且相乘
+                point_local_feat, cam_shape_feats = self._get_local_feats(smpl_feats, part_attention)  # [16384, 24] 11, 128, 24   11, 64, 24  <- 11, 128, 56, 56  11, 24, 56, 56
+                # feat = torch.cat((img_feat_joints, pred_uvd_jts_29, joint_score), dim=2)  # [1,15,2052(C'+3+1=2048+3+1=2052)]
+                feat = point_local_feat.view(out.size(0), -1)  # [1, 59508]
                 feat = self.dejoint(feat)  # 【1，2048】<- [1, 59508] conv(59508,2048)
                 if is_dev_relu:
                     feat = self.relu(feat)
@@ -566,7 +684,7 @@ class HRNetSMPLCam(nn.Module):
             scores=1 - sigma,
             # uvd_heatmap=torch.stack([hm_x0, hm_y0, hm_z0], dim=2),
             # uvd_heatmap=heatmaps,
-            img_feat=x0
+            img_feat=out
         )
         return output
 

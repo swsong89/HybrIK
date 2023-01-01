@@ -17,7 +17,7 @@ parser.add_argument('--cfg',
 
                     # default='configs/256x192_adam_lr1e_3_res34_smpl_3d_cam_2x_mix_w_pw3d.yaml',
 
-                    default='configs/256x192_adam_lr1e_3_hrw48_cam_2x_w_pw3d_3dhp_r9000p.yaml',
+                    default='configs/256x192_adam_lr1e_3_hrw48_cam_2x_w_pw3d_3dhp_dev_sample.yaml',
                     type=str)
 parser.add_argument('--exp-id', default='test_3dpw', type=str,
                     help='Experiment ID')
@@ -82,7 +82,7 @@ parser.add_argument('--print-freq',
 #                     help='test_interval /10')  # 一个epoch保存3次cache_model
 
 parser.add_argument('--ct',
-                    default=True,
+                    default=False,
                     help='continue train',
                     action='store_true')
 
@@ -102,7 +102,7 @@ parser.add_argument('--show',
                     help='show visualization',
                     action='store_true')
 parser.add_argument('--debug',
-                    default=False,
+                    default=True,
                     help='debug compute picture visualization',
                     action='store_true')
 opt = parser.parse_args()
