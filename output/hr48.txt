@@ -107,3 +107,33 @@ PVE: 82.34737638199518
 ##### Testing on Human3.6M #####
 opt.flip_test:  True
 batch_size:  8
+
+
+Loading model from pretrained_model/epoch_65_origin_36.52_3dpw_44.90.pth...
+##### Testing on 3DPW #####
+opt.flip_test:  True
+batch_size:  32
+100%|███████████████████████████████████████████████████████████████████████████████████████████████████| 1110/1110 [06:10<00:00,  3.00it/s]
+Evaluation start...
+XYZ_14 PA-MPJPE: 44.903982 | MPJPE: 76.116899, x: 28.034393, y: 29.96, z: 52.866538
+
+Test result is saved at exp/test_3d_kpt.json
+Evaluation start...
+XYZ_24 PA-MPJPE: 49.381848 | MPJPE: 74.335009, x: 26.099089, y: 30.51, z: 51.733029
+
+Test result is saved at exp/test_3d_kpt.json
+PVE: 87.04489044643738
+##### gt 3dpw err: 44.90398186083161 #####
+##### Testing on Human3.6M #####
+opt.flip_test:  True
+batch_size:  32
+100%|█████████████████████████████████████████████████████████████████████████████████████████████████████| 808/808 [04:26<00:00,  3.03it/s]
+Evaluation start...
+XYZ_14 Protocol 2 error (MPJPE) >> PA-MPJPE: 36.518835 | MPJPE: 65.116546, x: 19.147044, y: 38.90, z: 37.959580
+Directions: 61.83 Discussion: 61.38 Eating: 65.66 Greeting: 64.52 Phoning: 69.18 Posing: 57.55 Purchases: 62.14 Sitting: 80.46 SittingDown: 82.09 Smoking: 64.84 Photo: 68.48 Waiting: 61.59 Walking: 52.74 WalkDog: 63.54 WalkTogether: 56.98 
+Test result is saved at exp/test_3d_kpt.json
+Evaluation start...
+XYZ_24 Protocol 2 error (MPJPE) >> PA-MPJPE: 39.282033 | MPJPE: 63.320873, x: 18.296891, y: 36.46, z: 38.619877
+Directions: 61.33 Discussion: 60.26 Eating: 63.61 Greeting: 62.44 Phoning: 67.14 Posing: 57.33 Purchases: 59.10 Sitting: 79.10 SittingDown: 77.50 Smoking: 63.20 Photo: 66.57 Waiting: 59.47 Walking: 51.40 WalkDog: 60.78 WalkTogether: 55.22 
+Test result is saved at exp/test_3d_kpt.json
+##### gt h36m err: 36.51883463669938 #####

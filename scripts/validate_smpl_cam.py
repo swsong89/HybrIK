@@ -23,7 +23,7 @@ parser.add_argument('--cfg',
                     type=str)
 parser.add_argument('--checkpoint',
                     help='checkpoint file name',
-                    default='pretrained_model/hybrik_hrnet48_w3dpw.pth',
+                    default='pretrained_model/epoch_65_origin_36.52_3dpw_44.90.pth',
                     # required=True,
                     type=str)
 parser.add_argument('--gpu',
@@ -32,7 +32,7 @@ parser.add_argument('--gpu',
                     type=str)
 parser.add_argument('--batch',
                     help='validation batch size',
-                    default='16',
+                    default='32',
                     type=int)
 parser.add_argument('--flip-test',
                     default=True,
