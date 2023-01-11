@@ -23,7 +23,7 @@ parser.add_argument('--cfg',
                     type=str)
 parser.add_argument('--checkpoint',
                     help='checkpoint file name',
-                    default='pretrained_model/epoch_1.pth',
+                    default='pretrained_model/epoch_77_dev_h36m_29.39_3dpw_41.45.pth',
                     # required=True,
                     type=str)
 parser.add_argument('--gpu',
@@ -32,7 +32,7 @@ parser.add_argument('--gpu',
                     type=str)
 parser.add_argument('--batch',
                     help='validation batch size',
-                    default='8',
+                    default='32',
                     type=int)
 parser.add_argument('--flip-test',
                     default=True,

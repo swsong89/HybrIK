@@ -48,3 +48,35 @@ XYZ_14 PA-MPJPE: 44.409248 | MPJPE: 74.268458, x: 26.005452, y: 30.42, z: 51.602
 Test result is saved at ./exp/mix2_smpl_cam/256x192_adam_lr1e_3_hrw48_cam_2x_w_pw3d_3dhp_dev_sample.yaml-test_3dpw/test_3d_kpt.json
 =>  Saveing val_checkpoint_path: /checkpoint/epoch_4_z_h36m_32.61_3dpw_44.41.pth
 ##### Epoch 4 | h36m err: 32.612571738199975 / 999 | 3dpw err: 44.4092479430443 / 999 #####
+
+
+
+tcp://127.0.1.2:23456, ws:1, rank:0
+Loading model from pretrained_model/epoch_77_dev_h36m_29.39_3dpw_41.45.pth...
+##### Testing on 3DPW #####
+opt.flip_test:  True
+batch_size:  32
+100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 1110/1110 [08:33<00:00,  2.16it/s]
+Evaluation start...
+XYZ_14 PA-MPJPE: 41.442801 | MPJPE: 72.335985, x: 24.440219, y: 30.15, z: 50.448632
+
+Test result is saved at exp/test_3d_kpt.json
+Evaluation start...
+XYZ_24 PA-MPJPE: 45.641579 | MPJPE: 71.130063, x: 23.300333, y: 30.93, z: 49.199791
+
+Test result is saved at exp/test_3d_kpt.json
+PVE: 82.70757094965325
+##### gt 3dpw err: 41.44280060251777 #####
+##### Testing on Human3.6M #####
+opt.flip_test:  True
+batch_size:  32
+100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 808/808 [06:09<00:00,  2.19it/s]
+Evaluation start...
+XYZ_14 Protocol 2 error (MPJPE) >> PA-MPJPE: 29.291999 | MPJPE: 45.144729, x: 14.542496, y: 22.92, z: 28.912519
+Directions: 41.33 Discussion: 42.71 Eating: 44.32 Greeting: 42.02 Phoning: 48.55 Posing: 39.40 Purchases: 41.96 Sitting: 55.32 SittingDown: 57.74 Smoking: 45.67 Photo: 45.56 Waiting: 39.33 Walking: 40.50 WalkDog: 46.64 WalkTogether: 43.09 
+Test result is saved at exp/test_3d_kpt.json
+Evaluation start...
+XYZ_24 Protocol 2 error (MPJPE) >> PA-MPJPE: 31.243433 | MPJPE: 45.517435, x: 13.996876, y: 22.25, z: 30.305739
+Directions: 42.77 Discussion: 43.42 Eating: 45.42 Greeting: 41.78 Phoning: 49.08 Posing: 40.31 Purchases: 41.56 Sitting: 56.50 SittingDown: 56.48 Smoking: 46.68 Photo: 46.13 Waiting: 38.72 Walking: 39.99 WalkDog: 46.24 WalkTogether: 42.50 
+Test result is saved at exp/test_3d_kpt.json
+##### gt h36m err: 29.291998627376234 #####

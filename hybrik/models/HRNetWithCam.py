@@ -379,6 +379,7 @@ class HRNetSMPLCam(nn.Module):
 
                 img_feat_joints = torch.stack(img_feat_joints) # (joint_num, batch_size, channel_dim) [15,1,2048]
                 img_feat_joints = img_feat_joints.permute(1, 0 ,2) # (batch_size, joint_num, channel_dim) [1,15,2048]
+                pred_uvd_jts_29 = torch.cat((coord_x, coord_y, coord_z), dim=2)  # 0, 64
                 feat = torch.cat((img_feat_joints, pred_uvd_jts_29, joint_score), dim=2)  # [1,15,2052(C'+3+1=2048+3+1=2052)]
                 feat = feat.view(x0.size(0), -1)  # [1, 59508]
                 feat = self.dejoint(feat)  # 【1，2048】<- [1, 59508] conv(59508,2048)
