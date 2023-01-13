@@ -55,7 +55,7 @@ opt = parser.parse_args()
 # cfg_file = 'configs/256x192_adam_lr1e-3-res34_smpl_3d_cam_2x_mix_w_pw3d.yaml'
 # CKPT = './pretrained_w_cam.pth'
 cfg_file = 'configs/256x192_adam_lr1e_3_hrw48_cam_2x_w_pw3d_3dhp.yaml'
-CKPT = 'pretrained_model/pretrained_hr48.pth'
+CKPT = 'pretrained_model/hybrik_hrnet48_w3dpw.pth'
 cfg = update_config(cfg_file)
 
 bbox_3d_shape = getattr(cfg.MODEL, 'BBOX_3D_SHAPE', (2000, 2000, 2000))
@@ -71,6 +71,7 @@ transformation = SimpleTransform3DSMPLCam(
     dummpy_set, scale_factor=cfg.DATASET.SCALE_FACTOR,
     color_factor=cfg.DATASET.COLOR_FACTOR,
     occlusion=cfg.DATASET.OCCLUSION,
+    flip = True,
     input_size=cfg.MODEL.IMAGE_SIZE,
     output_size=cfg.MODEL.HEATMAP_SIZE,
     depth_dim=cfg.MODEL.EXTRA.DEPTH_DIM,
@@ -101,6 +102,7 @@ else:
     out_tmp_video_dir = osp.join(opt.out_dir, 'tmp_video', osp.basename(opt.img).split('.')[0])
 
 os.makedirs(opt.out_dir, exist_ok=True)
+os.makedirs(opt.out_dir + '/tmp', exist_ok=True)
 print('output dir: ' + opt.out_dir)
 os.makedirs(out_tmp_video_dir, exist_ok=True)
 os.system(f'cp {opt.img} {out_tmp_video_dir}')
@@ -139,8 +141,12 @@ image_bboxs = tracking_results[0]
 focal = 1000.0
 output_mesh_vis = input_image.copy()
 output_ps_vis = input_image.copy()
-alpha = 0.9  # 原人体显示占比多少
+alpha = 1  # 原人体显示占比多少
+i = 0 
 for bbox_idx in range(len(image_bboxs)):  # image_bboxs [11,5]
+    # output_mesh_vis = input_image.copy()  # 每次在原图生成一个mesh,结果不重叠
+
+    i += 1
     # Run HybrIK
     # image_bboxs: [x1,y1,x2,y2,person_idx] image_bbox: [x1, y1, x2, y2]
     image_bbox = image_bboxs[bbox_idx][:4]
@@ -192,8 +198,8 @@ for bbox_idx in range(len(image_bboxs)):  # image_bboxs [11,5]
 
     # 保存单个Mesh
     # if opt.save_img:
-    #     res_path = os.path.join(opt.out_dir, 'res_images', f'{0:06d}_{bbox_idx}.jpg')
-    #     cv2.imwrite(res_path, writer_output_mesh_vis)
+    res_path = os.path.join(opt.out_dir, 'tmp', basename.split('.')[0] + f'_{i}.jpg')
+    cv2.imwrite(res_path, writer_output_mesh_vis)
 
     # vis 2d
     pts = uv_29 * bbox_xywh[2]

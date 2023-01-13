@@ -122,6 +122,7 @@ transformation = SimpleTransform3DSMPLCam(
     dummpy_set, scale_factor=cfg.DATASET.SCALE_FACTOR,
     color_factor=cfg.DATASET.COLOR_FACTOR,
     occlusion=cfg.DATASET.OCCLUSION,
+    flip = True,
     input_size=cfg.MODEL.IMAGE_SIZE,
     output_size=cfg.MODEL.HEATMAP_SIZE,
     depth_dim=cfg.MODEL.EXTRA.DEPTH_DIM,
