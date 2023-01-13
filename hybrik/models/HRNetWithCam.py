@@ -247,7 +247,7 @@ class HRNetSMPLCam(nn.Module):
         batch_size = x.shape[0]
         # 关节点部分
         # x0 = self.preact(x)
-        out, x0 = self.preact(x)  # [1, 1856, 64, 64] [1, 2048]
+        out, x0 = self.preact(x)  # [1, 1856, 64, 64] [1, 2048,8,8]
         # print(out.shape)
         out = out.reshape(batch_size, self.num_joints, self.depth_dim, self.height_dim, self.width_dim)  # [1, 29, 64, 64, 64]
 

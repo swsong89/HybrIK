@@ -50,7 +50,7 @@ Test result is saved at ./exp/mix2_smpl_cam/256x192_adam_lr1e_3_hrw48_cam_2x_w_p
 ##### Epoch 4 | h36m err: 32.612571738199975 / 999 | 3dpw err: 44.4092479430443 / 999 #####
 
 
-
+72.33 41.44  82.70  29.29  45.14
 tcp://127.0.1.2:23456, ws:1, rank:0
 Loading model from pretrained_model/epoch_77_dev_h36m_29.39_3dpw_41.45.pth...
 ##### Testing on 3DPW #####
@@ -80,3 +80,35 @@ XYZ_24 Protocol 2 error (MPJPE) >> PA-MPJPE: 31.243433 | MPJPE: 45.517435, x: 13
 Directions: 42.77 Discussion: 43.42 Eating: 45.42 Greeting: 41.78 Phoning: 49.08 Posing: 40.31 Purchases: 41.56 Sitting: 56.50 SittingDown: 56.48 Smoking: 46.68 Photo: 46.13 Waiting: 38.72 Walking: 39.99 WalkDog: 46.24 WalkTogether: 42.50 
 Test result is saved at exp/test_3d_kpt.json
 ##### gt h36m err: 29.291998627376234 #####
+
+
+flip_test:  False 42.70  73.69  84.50  30.10  46.68
+
+Loading model from pretrained_model/epoch_77_dev_h36m_29.39_3dpw_41.45.pth...
+##### Testing on 3DPW #####
+opt.flip_test:  False
+batch_size:  32
+100%|█████████████████████████████████████████████████████████████████████| 1110/1110 [06:53<00:00,  2.68it/s]
+Evaluation start...
+XYZ_14 PA-MPJPE: 42.706701 | MPJPE: 73.698782, x: 24.867835, y: 30.69, z: 51.378789
+
+Test result is saved at exp/test_3d_kpt.json
+Evaluation start...
+XYZ_24 PA-MPJPE: 47.077580 | MPJPE: 72.738549, x: 23.742803, y: 31.50, z: 50.436056
+
+Test result is saved at exp/test_3d_kpt.json
+PVE: 84.50059745762799
+##### gt 3dpw err: 42.70670054084703 #####
+##### Testing on Human3.6M #####
+opt.flip_test:  False
+batch_size:  32
+100%|███████████████████████████████████████████████████████████████████████| 808/808 [05:11<00:00,  2.59it/s]
+Evaluation start...
+XYZ_14 Protocol 2 error (MPJPE) >> PA-MPJPE: 30.101590 | MPJPE: 46.682519, x: 14.815693, y: 24.12, z: 29.594923
+Directions: 42.40 Discussion: 44.26 Eating: 46.90 Greeting: 42.88 Phoning: 50.11 Posing: 40.55 Purchases: 42.83 Sitting: 57.43 SittingDown: 60.53 Smoking: 47.04 Photo: 47.42 Waiting: 40.05 Walking: 41.40 WalkDog: 48.56 WalkTogether: 44.22 
+Test result is saved at exp/test_3d_kpt.json
+Evaluation start...
+XYZ_24 Protocol 2 error (MPJPE) >> PA-MPJPE: 32.182739 | MPJPE: 47.049297, x: 14.348971, y: 23.30, z: 31.084509
+Directions: 43.85 Discussion: 44.82 Eating: 47.68 Greeting: 42.81 Phoning: 50.78 Posing: 41.53 Purchases: 42.43 Sitting: 58.53 SittingDown: 59.18 Smoking: 48.18 Photo: 48.12 Waiting: 39.45 Walking: 40.83 WalkDog: 48.11 WalkTogether: 43.75 
+Test result is saved at exp/test_3d_kpt.json
+##### gt h36m err: 30.10159044127743 #####

@@ -28,14 +28,14 @@ parser.add_argument('--checkpoint',
                     type=str)
 parser.add_argument('--gpu',
                     help='gpus',
-                    default = '0',
+                    default = '1',
                     type=str)
 parser.add_argument('--batch',
                     help='validation batch size',
                     default='32',
                     type=int)
 parser.add_argument('--flip-test',
-                    default=True,
+                    default=False,
                     dest='flip_test',
                     help='flip test',
                     action='store_true')
