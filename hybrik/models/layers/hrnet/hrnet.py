@@ -16,6 +16,12 @@ import yaml
 from easydict import EasyDict as edict
 from .DaNet import _DAHead
 
+is_dev_da = False
+
+
+# is_dev_da = True
+
+
 BN_MOMENTUM = 0.1
 logger = logging.getLogger(__name__)
 
@@ -322,7 +328,8 @@ class PoseHighResolutionNet(nn.Module):
             pre_stage_channels, num_channels)
         self.stage4, pre_stage_channels = self._make_stage(
             self.stage4_cfg, num_channels, multi_scale_output=self.generate_feat)
-        # self.Da = _DAHead(in_channels=self.stage4_cfg['NUM_CHANNELS'][0], nclass=self.stage4_cfg['NUM_CHANNELS'][0])
+        if is_dev_da:
+            self.Da = _DAHead(in_channels=self.stage4_cfg['NUM_CHANNELS'][0], nclass=self.stage4_cfg['NUM_CHANNELS'][0])
 
         # Classification Head
         if self.generate_feat:
@@ -547,7 +554,8 @@ class PoseHighResolutionNet(nn.Module):
             else:
                 x_list.append(y_list[i])
         y_list = self.stage4(x_list)  # [ [1,48,64,64], [1,96,32,32],[1,192,16,16], [1,384,8,8]]
-        # y_list[0] = self.Da(y_list[0])[0]  # list有3个，第一个是sum,第二个是c,第三个是p
+        if is_dev_da:
+            y_list[0] = self.Da(y_list[0])[0]  # list有3个，第一个是sum,第二个是c,第三个是p
 
         if self.generate_hm:
             # y_list1 = self.upsample_stage_2(y_list[1])  # 11, 64, 56, 56 <-  11, 64, 28, 28

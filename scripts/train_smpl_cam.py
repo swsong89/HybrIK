@@ -266,10 +266,10 @@ def train(m, opt, train_loader, criterion, optimizer, writer, epoch, cfg, gt_val
             # train_loader.set_description(loss_desciption)
             # logging的频率
             
-            if iter % opt.print_freq == 0:
+            if iter % opt.pf == 0:
                 time_print_freq = time.time() - iter_start_time  # 计算迭代打印频率时间
                 iter_start_time = time.time()
-                pred_time = len(train_loader)/opt.print_freq*time_print_freq/60  #预测整个epoch需要时间
+                pred_time = len(train_loader)/opt.pf*time_print_freq/60  #预测整个epoch需要时间
                 epoch_used_time = (time.time() - epoch_start_time)/60  # epoch已经使用的时间
                 loss_desciption += '  time: {:.2f}s  pred_time: {:.2f}m used_time: {:.2f}m'.format(
                                     time_print_freq, pred_time, epoch_used_time)
@@ -293,8 +293,9 @@ def train(m, opt, train_loader, criterion, optimizer, writer, epoch, cfg, gt_val
     return loss_logger.avg, acc_xyz_17_logger.avg
 
 
-def validate_gt(m, opt, cfg, gt_val_dataset, heatmap_to_coord, batch_size=cfg.TRAIN.get('BATCH_SIZE')//2, pred_root=False):  # 3/4 batchsize在h36m和pw3d的情况下不会超出训练需要的内存
+def validate_gt(m, opt, cfg, gt_val_dataset, heatmap_to_coord, batch_size=cfg.TRAIN.get('BATCH_SIZE'), pred_root=False):  # 3/4 batchsize在h36m和pw3d的情况下不会超出训练需要的内存
     print('batch_size: ', batch_size)
+    print('flip_test: ', opt.flip_test)
 
     gt_val_sampler = torch.utils.data.distributed.DistributedSampler(
         gt_val_dataset, num_replicas=opt.world_size, rank=opt.rank)

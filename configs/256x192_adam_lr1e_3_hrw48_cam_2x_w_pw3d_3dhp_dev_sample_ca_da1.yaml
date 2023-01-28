@@ -1,0 +1,86 @@
+DATASET:
+  DATASET: 'mix2_smpl_cam'
+  SET_LIST:
+    - ROOT: 'h36m'
+      TEST_SET: 'Sample_20_test_Human36M_smpl'
+      TRAIN_SET: 'Sample_trainmin_train_Human36M_smpl_leaf_twist'
+    - ROOT: 'coco'
+      TRAIN_SET: 'train2017'
+    - ROOT: 'mpi_inf_3dhp'
+      TRAIN_SET: 'train_v2'
+    - ROOT: '3DPW'
+      TRAIN_SET: '3DPW_train_new'
+  PROTOCOL: 2
+  FLIP: True
+  ROT_FACTOR: 30
+  SCALE_FACTOR: 0.3
+  NUM_JOINTS_HALF_BODY: 8
+  PROB_HALF_BODY: -1
+  COLOR_FACTOR: 0.2
+  OCCLUSION: False
+MODEL:
+  TYPE: 'HRNetSMPLCam'
+  # HR_PRETRAINED: './pose_hrnet_w48_256x192.pth'
+  HR_PRETRAINED: ''
+
+  PRETRAINED: ''
+  # TRY_LOAD: ''
+  TRY_LOAD: 'pretrained_model/hybrik_hrnet48_w3dpw.pth'
+  RESUME: ''
+  FOCAL_LENGTH: 1000
+  IMAGE_SIZE:
+  - 256
+  - 256
+  HEATMAP_SIZE:
+  - 64
+  - 64
+  NUM_JOINTS: 29
+  HRNET_TYPE: 48
+  EXTRA:
+    SIGMA: 2
+    BACKBONE: 'resnet'
+    CROP: 'padding'
+    AUGMENT: 'none'
+    PRESET: 'simple_smpl_3d_cam'
+    DEPTH_DIM: 64
+  POST:
+    NORM_TYPE: 'softmax'
+  BBOX_3D_SHAPE:
+    - 2200
+    - 2200
+    - 2200
+LOSS:
+  TYPE: 'LaplaceLossDimSMPLCam'
+  ELEMENTS:
+    BETA_WEIGHT: 1
+    BETA_REG_WEIGHT: 0
+    PHI_REG_WEIGHT: 0.0001
+    LEAF_REG_WEIGHT: 0
+    TWIST_WEIGHT: 1
+    THETA_WEIGHT: 0.01
+    UVD24_WEIGHT: 1
+    XYZ24_WEIGHT: 0
+    XYZ_SMPL24_WEIGHT: 0
+    XYZ_SMPL17_WEIGHT: 0
+    VERTICE_WEIGHT: 0
+    USE_LAPLACE: True
+TEST:
+  HEATMAP2COORD: 'coord'
+TRAIN:
+  WORLD_SIZE: 1
+  BATCH_SIZE: 16  # 16 21395MiB
+  BEGIN_EPOCH: 0
+  END_EPOCH: 200
+  OPTIMIZER: 'adam'
+  LR: 0.001
+  LR_FACTOR: 0.1
+  LR_STEP:
+  - 60
+  - 80
+  DPG_MILESTONE: 140
+  DPG_STEP:
+  - 160
+  - 190
+# 123
+# da在64x64特征图上进行的，通道是2048,DA降通道为4
+# nohup python scripts/train_smpl_cam.py --gpu 0 --cfg configs/256x192_adam_lr1e_3_hrw48_cam_2x_w_pw3d_3dhp_dev_sample_ca_da1.yaml >> configs/log/dev_sample_ca_da1.log 2>&1

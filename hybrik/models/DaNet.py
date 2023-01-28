@@ -3,7 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.checkpoint import checkpoint
 from torch.autograd import Variable
-
+import os
+# os.environ["CUDA_VISIBLE_DEVICES"] = str(device_id)
 class _PositionAttentionModule(nn.Module):
     """ Position attention module"""
 
@@ -53,8 +54,7 @@ class _DAHead(nn.Module):
     def __init__(self, in_channels, nclass, aux=False, norm_layer=nn.BatchNorm2d, norm_kwargs=None, **kwargs):
         super(_DAHead, self).__init__()
         self.aux = aux
-        print('in_channels: ', in_channels)
-        inter_channels = in_channels // 1
+        inter_channels = in_channels // 4  # 2048/4 = 512
         self.conv_p1 = nn.Sequential(
             nn.Conv2d(in_channels, inter_channels, 3, padding=1, bias=False),
             norm_layer(inter_channels, **({} if norm_kwargs is None else norm_kwargs)),
@@ -65,7 +65,7 @@ class _DAHead(nn.Module):
             norm_layer(inter_channels, **({} if norm_kwargs is None else norm_kwargs)),
             nn.ReLU(True)
         )
-        self.pam = _PositionAttentionModule(inter_channels, ratio=1, **kwargs)
+        self.pam = _PositionAttentionModule(inter_channels, ratio=4, **kwargs)  # 512/4 = 128
         self.cam = _ChannelAttentionModule(**kwargs)
         self.conv_p2 = nn.Sequential(
             nn.Conv2d(inter_channels, inter_channels, 3, padding=1, bias=False),
@@ -147,35 +147,39 @@ class _DAHead(nn.Module):
 
         # return tuple(outputs)  # aux=True的话输出有3个，sum fusion, p_out, c_out
 
-if __name__ == "__main__":
-    # t = torch.ones((2, 32, 128, 128))
-    # Da = _DAHead(32, 32)
-    # out = Da(t)[0]
-    # print('out.shape: {}'.format(out.shape))
-    # print('out.shape: ', out.shape)
+if __name__ == "__main__":  # 2048
 
-
-    import torch
-    import inspect
-    from gpu_tracker import  MemTracker
-    from torch.utils.checkpoint import checkpoint_sequential
-
-    device_id = 3
+    device_id  = 3
     device = torch.device('cuda:{}'.format(device_id))
+    t = torch.ones((8, 2048, 64, 64), requires_grad=True).to(device)
+    Da = _DAHead(2048, 2048).to(device)
+    out = Da(t)[0]
+    print('out.shape: {}'.format(out.shape))
+    print('out.shape: ', out.shape)  # 2, 2048, 8, 8 2199    2, 512,64,64 2359   2, 2048, 64, 64  2678  2, 2048, 64, 64 ratio=1 2703
+    #   4, 2048, 64, 64 1, 2685  bs 16  4863
 
-    frame = inspect.currentframe()          # define a frame to track
-    gpu_tracker = MemTracker(frame, device=device_id)         # define a GPU tracker
 
-    gpu_tracker.track()
-    Da = _DAHead(32, 32).to(device)  # 初始化模型1781.5Mb
-    gpu_tracker.track()
-    input = torch.ones((2, 32, 128, 128), requires_grad=True).to(device)  #  batchsize 2 21.0MB
-    gpu_tracker.track()
-    out = Da(input)  #  运算4653.6Mb 
-    # output = checkpoint_sequential(Da, 2, input)
-    gpu_tracker.track()  #  2batch_size总共 6456.1Mb # 8 batchsize 19G
+    # import torch
+    # import inspect
+    # from gpu_tracker import  MemTracker
+    # from torch.utils.checkpoint import checkpoint_sequential
 
-    print('ok')
+    # device_id = 3
+    # device = torch.device('cuda:{}'.format(device_id))
+
+    # frame = inspect.currentframe()          # define a frame to track
+    # gpu_tracker = MemTracker(frame, device=device_id)         # define a GPU tracker
+
+    # gpu_tracker.track()
+    # Da = _DAHead(32, 32).to(device)  # 初始化模型1781.5Mb
+    # gpu_tracker.track()
+    # input = torch.ones((2, 32, 128, 128), requires_grad=True).to(device)  #  batchsize 2 21.0MB
+    # gpu_tracker.track()
+    # out = Da(input)  #  运算4653.6Mb 
+    # # output = checkpoint_sequential(Da, 2, input)
+    # gpu_tracker.track()  #  2batch_size总共 6456.1Mb # 8 batchsize 19G
+
+    # print('ok')
 
 
 

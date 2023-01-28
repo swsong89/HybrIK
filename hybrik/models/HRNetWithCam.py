@@ -8,12 +8,27 @@ from torch.nn import functional as F
 from .builder import SPPE
 from .layers.smpl.SMPL import SMPL_layer
 from .layers.hrnet.hrnet import get_hrnet
+from .CBAM import ChannelAttention
+from .CBAM import CBAM
+from .DaNet import _DAHead
 
 is_dev_sample = False
 is_dev_relu = False
+is_dev_ca = False
+is_dev_da = False
+is_dev_se = False
+is_dev_cbam = False
+
 
 is_dev_sample = True
+
 # is_dev_relu = True
+# is_dev_ca = True
+# is_dev_se = True
+# is_dev_cbam = True
+
+
+is_dev_da = True  # 是在8x8特征图上使用da
 
 def flip(x):
     assert (x.dim() == 3 or x.dim() == 4)
@@ -157,14 +172,26 @@ class HRNetSMPLCam(nn.Module):
             # #     GraphResBlock(self.graph_adj, 128),
             # #     GraphResBlock(self.graph_adj, 128),
             # #     GraphResBlock(self.graph_adj, 128)])
+            feature_channels = 2048
+            de_channels = 1024
+            if is_dev_da:
+                self.da = _DAHead(in_channels=feature_channels, nclass=feature_channels)
             if is_dev_relu:
-              self.relu = nn.ReLU(True)
+                self.relu = nn.ReLU(True)
             self.num_joint = 29
-            self.dejoint = nn.Linear(self.num_joint*(2048+4), 1024)
-            self.decshape = nn.Linear(1024, 10)
-            self.decphi = nn.Linear(1024, 23 * 2)  # [cos(phi), sin(phi)]
-            self.deccam = nn.Linear(1024, 1)
-            self.decsigma = nn.Linear(1024, 29)
+            self.dejoint = nn.Linear(self.num_joint*(feature_channels+4), de_channels)
+            if is_dev_ca:
+                self.ca = ChannelAttention(de_channels)
+            if is_dev_se:
+                ratio = 4
+                self.se1 = nn.Linear(in_features=de_channels, out_features=de_channels//ratio, bias=False)
+                self.se2 = nn.Linear(in_features=de_channels//ratio, out_features=de_channels, bias=False)
+                self.se_sigmoid = nn.Sigmoid()
+
+            self.decshape = nn.Linear(de_channels, 10)
+            self.decphi = nn.Linear(de_channels, 23 * 2)  # [cos(phi), sin(phi)]
+            self.deccam = nn.Linear(de_channels, 1)
+            self.decsigma = nn.Linear(de_channels, 29)
         else:
         # 下面是原始的
             self.decshape = nn.Linear(2048, 10)
@@ -247,7 +274,7 @@ class HRNetSMPLCam(nn.Module):
         batch_size = x.shape[0]
         # 关节点部分
         # x0 = self.preact(x)
-        out, x0 = self.preact(x)  # [1, 1856, 64, 64] [1, 2048,8,8]
+        out, x0 = self.preact(x)  # [1, 1856, 64, 64] [1, 2048,8,8] out是 [1,48,64,64]直接卷积得到的， x0是4张特征图下采样到8x8,再卷积得到的
         # print(out.shape)
         out = out.reshape(batch_size, self.num_joints, self.depth_dim, self.height_dim, self.width_dim)  # [1, 29, 64, 64, 64]
 
@@ -302,6 +329,8 @@ class HRNetSMPLCam(nn.Module):
         # 采样
         if is_dev_sample:
             if flip_test == False:
+                if is_dev_da:
+                    x0 = self.da(x0)[0]
                 scores = []
                 img_feat_joints = []
                 for j in range(self.num_joints):
@@ -311,7 +340,7 @@ class HRNetSMPLCam(nn.Module):
                     # 得到关节点置信度
                     grid = torch.stack((x, y, z), 1)[:, None, None, None, :]  # torch.stack((x, y, z), 1) [1,3] grid [1,1,1,1,3]
                     score_j = F.grid_sample(heatmaps[:, j, None, :, :, :], grid, align_corners=True)[:, 0, 0, 0, 0]  # score_j [1(batchsize)] 因为batch_size=1,(batch_size) oint_heatmap[:, j, None, :, :, :] [N,1,64,64,64] -> [N,1,1,1,1]
-                    scores.append(score_j)  # TODO grid_sample
+                    scores.append(score_j)  # TODO grid_sample  # heatmaps [1, 29, 64, 64, 64]
 
                     # 根据关节点在图像特征进行采样
                     img_feat = x0.float()
@@ -334,6 +363,15 @@ class HRNetSMPLCam(nn.Module):
                     feat = (torch.sigmoid(feat)-0.5)*2
                     # feat = self.relu()
                     # torch.tanh(feat, feat)
+                elif is_dev_ca:
+                    # print("channel attetion")
+                    # print('feat :', feat.size())
+                    feat = self.ca(feat.view(x0.size(0),-1,1,1)).view(x0.size(0),-1)
+                    # print('feat :', feat.size())
+                elif is_dev_se:
+                    feat = self.se1(feat)
+                    feat = self.se2(feat)
+                    feat = self.se_sigmoid(feat)
                 else:
                     feat = (feat-feat.min(-1).values.view(-1,1))/(feat.max(-1).values.view(-1,1)-feat.min(-1).values.view(-1,1))
 
@@ -351,6 +389,10 @@ class HRNetSMPLCam(nn.Module):
                 # print('dev feat min: ', feat.detach().min().cpu().numpy(), ' feat max: ', feat.detach().max().cpu().numpy(), \
                 #         ' camera_scale: ', pred_camera.detach().cpu().numpy()[0,0])
             else:  # dev flip_test
+                if is_dev_da:
+                    x0 = self.da(x0)[0]
+                    flip_x0 = self.da(flip_x0)[0]
+
                 scores = []
                 img_feat_joints = []
                 img_flip_feat_joints = []
@@ -386,6 +428,13 @@ class HRNetSMPLCam(nn.Module):
                 if is_dev_relu:
                     feat = self.relu(feat)
                     feat = (torch.sigmoid(feat)-0.5)*2
+                elif is_dev_ca:
+                    # print("channel attetion")
+                    feat = self.ca(feat.view(x0.size(0),-1,1,1)).view(x0.size(0),-1)
+                elif is_dev_se:
+                    feat = self.se1(feat)
+                    feat = self.se2(feat)
+                    feat = self.se_sigmoid(feat)
                 else:
                     feat = (feat-feat.min(-1).values.view(-1,1))/(feat.max(-1).values.view(-1,1)-feat.min(-1).values.view(-1,1))                # feat = torch.sigmoid(feat)
                 # print('before feat min: ', feat.detach().min().cpu().numpy(), ' feat max: ', feat.detach().max().cpu().numpy())
@@ -396,8 +445,15 @@ class HRNetSMPLCam(nn.Module):
                 flip_feat = flip_feat.view(x0.size(0), -1)  # [1, 59508]
                 flip_feat = self.dejoint(flip_feat)  # 【1，2048】<- [1, 59508] conv(59508,2048)
                 if is_dev_relu:
-                    feat = self.relu(feat)
-                    feat = (torch.sigmoid(feat)-0.5)*2
+                    flip_feat = self.relu(flip_feat)
+                    flip_feat = (torch.sigmoid(flip_feat)-0.5)*2
+                elif is_dev_ca:
+                    # print("channel attetion")
+                    flip_feat = self.ca(flip_feat.view(x0.size(0),-1,1,1)).view(x0.size(0),-1)
+                elif is_dev_se:
+                    flip_feat = self.se1(flip_feat)
+                    flip_feat = self.se2(flip_feat)
+                    flip_feat = self.se_sigmoid(flip_feat)
                 else:
                     flip_feat = (flip_feat-flip_feat.min(-1).values.view(-1,1))/(flip_feat.max(-1).values.view(-1,1)-flip_feat.min(-1).values.view(-1,1))                # feat = torch.sigmoid(feat)
                 # 和softmax替换

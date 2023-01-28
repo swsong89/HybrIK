@@ -25,12 +25,12 @@ parser.add_argument('--exp-id', default='test_3dpw', type=str,
 "----------------------------- General options -----------------------------"
 parser.add_argument('--nThreads', default=4, type=int,
                     help='Number of data loading threads')
-parser.add_argument('--snapshot', default=2, type=int,
-                    help='How often to take a snapshot of the model (0 = never)')  # 2表示2个epocg验证一次
+parser.add_argument('--snapshot', default=1, type=int,
+                    help='How often to take a snapshot of the model (0 = never)')  # 2表示2个epocg验证一次, 1表示每个epoch验证一次
 
 parser.add_argument('--rank', default=0, type=int,
                     help='node rank for distributed training')
-parser.add_argument('--dist-url', default='tcp://127.0.1.2:23458', type=str,
+parser.add_argument('--dist-url', default='tcp://127.0.1.2:23451', type=str,
                     help='url used to set up distributed training')
 parser.add_argument('--dist-backend', default='nccl', type=str,
                     help='distributed backend')
@@ -56,7 +56,7 @@ parser.add_argument('--params', default=False, dest='params',
 parser.add_argument('--map', default=True, dest='map',
                     help='Evaluate mAP per epoch', action='store_true')
 parser.add_argument('--flip-test',
-                    default=False,
+                    default=True,
                     dest='flip_test',
                     help='flip test',
                     action='store_true')
@@ -70,7 +70,7 @@ parser.add_argument('--gpu',
                     type =str,
                     help='gpu')
 
-parser.add_argument('--print-freq',
+parser.add_argument('--pf',
                     default='100',
                     dest='print_freq',
                     type =int,
