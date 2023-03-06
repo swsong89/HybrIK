@@ -15,6 +15,7 @@ from torchvision import transforms as T
 from torchvision.models.detection import fasterrcnn_resnet50_fpn
 from tqdm import tqdm
 from multi_person_tracker import MPT
+from torchsummaryX import summary
 
 det_transform = T.Compose([T.ToTensor()])
 
@@ -83,8 +84,8 @@ parser.add_argument('--save-img', default=True, dest='save_img',
 opt = parser.parse_args()
 
 
-cfg_file = 'configs/256x192_adam_lr1e_3_hrw48_cam_2x_w_pw3d_3dhp.yaml'
-CKPT = 'pretrained_model/pretrained_hr48.pth'
+cfg_file = 'configs/256x192_adam_lr1e_3_hrw48_cam_2x_w_pw3d_3dhp_dev_sample_deform_da.yaml'
+CKPT = 'pretrained_model/epoch_23_dev_sample_deform_da_h36m_29.83_46.16_3dpw_41.57_73.02.pth'
 cfg = update_config(cfg_file)
 
 bbox_3d_shape = getattr(cfg.MODEL, 'BBOX_3D_SHAPE', (2000, 2000, 2000))
@@ -122,6 +123,7 @@ transformation = SimpleTransform3DSMPLCam(
     dummpy_set, scale_factor=cfg.DATASET.SCALE_FACTOR,
     color_factor=cfg.DATASET.COLOR_FACTOR,
     occlusion=cfg.DATASET.OCCLUSION,
+    flip=True,
     input_size=cfg.MODEL.IMAGE_SIZE,
     output_size=cfg.MODEL.HEATMAP_SIZE,
     depth_dim=cfg.MODEL.EXTRA.DEPTH_DIM,
@@ -260,8 +262,13 @@ for img_idx in tqdm(range(len(img_path_list))):
             pose_input, bbox, img_center = transformation.test_transform(
                 input_image, image_bbox)
             pose_input = pose_input.to(opt.gpu)[None, :, :, :]
+
+
+            # 如果测试参数量的话，这里就跑一下就可以
+            # summary(hybrik_model,pose_input)
             pose_output = hybrik_model(
-                pose_input, flip_test=True,
+                pose_input
+                , flip_test=True,
                 bboxes=torch.from_numpy(np.array(bbox)).to(pose_input.device).unsqueeze(0).float(),
                 img_center=torch.from_numpy(img_center).to(pose_input.device).unsqueeze(0).float()
             )
@@ -393,4 +400,30 @@ write2d_stream.release()
 fina_image_dir = os.path.join(opt.out_dir, 'final_images')
 print('fina_image_dir: ' + fina_image_dir)
 os.system(f'python /home/ssw/code/tool/tool.py -m i -i {fina_image_dir}')
+
+
+
+
+"""
+dev 参数量 [1,3,256,256]
+[1,3,256,256] dev
+                             Totals
+Total params            161.620382M
+Trainable params        161.620382M
+Non-trainable params            0.0
+Mult-Adds             24.762578432G
+
+5人渲染
+不渲染
+dev [02:22<00:00,  1.17s/it]
+63/122 [00:48<00:45,  1.34it/s]
+
+单人
+单人只计算不渲染
+
+dev
+43/300 [00:22<02:12,  1.94it/s]
+97/300 [00:16<00:34,  6.04it/s]
+
+"""
 
