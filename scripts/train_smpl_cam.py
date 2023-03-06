@@ -443,11 +443,19 @@ def main_worker(gpu, opt, cfg):
     if opt.ct:
         checkpoint_path = os.path.join(opt.work_dir, 'checkpoint')
         files = os.listdir(checkpoint_path)
+        max_checkpoint_path = -1
+        max_epoch = -1
         try:
-            max_checkpoint_path = max(files)
+            for file in files:
+                if file == 'cache_model.pth':
+                    continue
+                file_epoch = int(file.split('_')[1])
+                if file_epoch > max_epoch:
+                    max_epoch = file_epoch
+                    max_checkpoint_path = file
+
             logger.info('max_checkpoint_path: ' + max_checkpoint_path)
-            begin_epoch = int(max_checkpoint_path.split('/')[-1].replace('.pth', '').split('_')[1]) + 1  # epoch_1_iter_2,从epoch下一个开始
-            cfg.TRAIN.BEGIN_EPOCH = begin_epoch
+            cfg.TRAIN.BEGIN_EPOCH = max_epoch + 1
             cfg.MODEL.PRETRAINED = checkpoint_path + '/' + max_checkpoint_path
             logger.info('Find newest checkpoint_path: ' + cfg.MODEL.PRETRAINED)
 

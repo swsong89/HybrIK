@@ -28,7 +28,7 @@ parser.add_argument('--checkpoint',
                     type=str)
 parser.add_argument('--gpu',
                     help='gpus',
-                    default = '2',
+                    default = '1',
                     type=str)
 parser.add_argument('--batch',
                     help='validation batch size',

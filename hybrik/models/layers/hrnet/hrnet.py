@@ -15,12 +15,13 @@ import torch.nn.functional as F
 import yaml
 from easydict import EasyDict as edict
 from .DaNet import _DAHead
+from .self_modules import DeformBottleneck
 
 is_dev_da = False
-
+is_dev_deform = False
 
 # is_dev_da = True
-
+is_dev_deform = True
 
 BN_MOMENTUM = 0.1
 logger = logging.getLogger(__name__)
@@ -295,7 +296,21 @@ class PoseHighResolutionNet(nn.Module):
                                bias=False)
         self.bn2 = nn.BatchNorm2d(64, momentum=BN_MOMENTUM)
         self.relu = nn.ReLU(inplace=True)
-        self.layer1 = self._make_layer(Bottleneck, 64, 4)
+        if is_dev_deform:
+            # print('DeformBottleneck')
+            # 修改为deformBottleneck
+            downsample = nn.Sequential(
+                nn.Conv2d(64, 256, kernel_size=(1, 1), stride=(1, 1), bias=False),
+                nn.BatchNorm2d(256, momentum=BN_MOMENTUM, eps=1e-05, affine=True, track_running_stats=True),
+            )
+            self.layer1 = nn.Sequential(
+                DeformBottleneck(64, 64, downsample=downsample),
+                DeformBottleneck(256, 64),
+                DeformBottleneck(256, 64),
+                DeformBottleneck(256, 64),
+            )            
+        else:
+            self.layer1 = self._make_layer(Bottleneck, 64, 4)
 
         self.stage2_cfg = extra['STAGE2']
         num_channels = self.stage2_cfg['NUM_CHANNELS']
