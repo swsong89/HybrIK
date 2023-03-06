@@ -17,3 +17,8 @@ python scripts/demo_m_video.py --video-name demo/dance.mp4
 
 image 多人
 python scripts/demo_m_image.py --img demo/crowd1.jpg  --out-dir demo/test
+
+
+img_dir的话按目录图片进行，否则img进行
+imge_dir 多人
+python scripts/demo_m_image.py --img_dir demo/  --out-dir demo/test
