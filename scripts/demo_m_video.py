@@ -14,6 +14,7 @@ from hybrik.utils.vis import get_max_iou_box, get_one_box, vis_2d
 from torchvision import transforms as T
 from torchvision.models.detection import fasterrcnn_resnet50_fpn
 from tqdm import tqdm
+from torchsummaryX import summary
 from multi_person_tracker import MPT
 
 det_transform = T.Compose([T.ToTensor()])
@@ -69,7 +70,7 @@ parser.add_argument('--gpu',
 #                     type=str)
 parser.add_argument('--video-name',
                     help='video name',
-                    default='demo/dance.mp4',
+                    default='demo/sample_video.mp4',
                     type=str)
 parser.add_argument('--out-dir',
                     help='output folder',
@@ -261,6 +262,11 @@ for img_idx in tqdm(range(len(img_path_list))):
             pose_input, bbox, img_center = transformation.test_transform(
                 input_image, image_bbox)
             pose_input = pose_input.to(opt.gpu)[None, :, :, :]
+
+
+            #计算参数量
+            # summary(hybrik_model,pose_input)
+            # break
             pose_output = hybrik_model(
                 pose_input, flip_test=True,
                 bboxes=torch.from_numpy(np.array(bbox)).to(pose_input.device).unsqueeze(0).float(),
@@ -394,4 +400,22 @@ write2d_stream.release()
 fina_image_dir = os.path.join(opt.out_dir, 'final_images')
 print('fina_image_dir: ' + fina_image_dir)
 os.system(f'python /home/ssw/code/tool/tool.py -m i -i {fina_image_dir}')
+
+
+""""
+5人渲染  不渲染 dance.mp4
+ 122/122 [01:45<00:00,  1.16it/s
+ | 33/122 [00:15<00:42,  2.11it/s]
+单人    单人只计算不渲染 sample_video.mp4
+ 102/300 [00:46<01:30,  2.19it/s]
+ 300/300 [00:33<00:00,  9.09it/s]
+
+
+                             Totals
+Total params             75.688022M
+Trainable params         75.688022M
+Non-trainable params            0.0
+Mult-Adds             22.929634816G
+
+"""
 
