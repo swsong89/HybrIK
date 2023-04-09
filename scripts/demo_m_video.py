@@ -70,11 +70,11 @@ parser.add_argument('--gpu',
 #                     type=str)
 parser.add_argument('--video-name',
                     help='video name',
-                    default='demo/dance.mp4',
+                    default='demo_origin/football.mp4',
                     type=str)
 parser.add_argument('--out-dir',
                     help='output folder',
-                    default='demo/out',
+                    default='demo_origin/out',
                     type=str)
 parser.add_argument('--save-pt', default=False, dest='save_pt',
                     help='save prediction', action='store_true')
@@ -399,7 +399,7 @@ write2d_stream.release()
 # 上面的write写出的视频vscode不能看，手动图片转视频
 fina_image_dir = os.path.join(opt.out_dir, 'final_images')
 print('fina_image_dir: ' + fina_image_dir)
-os.system(f'python /home/ssw/code/tool/tool.py -m i -i {fina_image_dir}')
+os.system(f'python tool.py -m i -i {fina_image_dir}')
 
 
 """"
