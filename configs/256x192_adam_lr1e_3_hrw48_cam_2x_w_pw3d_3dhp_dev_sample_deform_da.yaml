@@ -68,7 +68,7 @@ TEST:
   HEATMAP2COORD: 'coord'
 TRAIN:
   WORLD_SIZE: 1
-  BATCH_SIZE: 20  # 16
+  BATCH_SIZE: 2  # 16
   BEGIN_EPOCH: 0
   END_EPOCH: 200
   OPTIMIZER: 'adam'
@@ -86,3 +86,6 @@ TRAIN:
 # 
 # nohup python scripts/train_smpl_cam.py --gpu 3 --cfg configs/256x192_adam_lr1e_3_hrw48_cam_2x_w_pw3d_3dhp_dev_sample_deform_da.yaml >> configs/log/dev_sample_deform_da.log 2>&1
 # python scripts/train_smpl_cam.py --gpu 3 --cfg configs/256x192_adam_lr1e_3_hrw48_cam_2x_w_pw3d_3dhp_dev_sample_deform_da.yaml --pf 1
+
+
+# python scripts/train_smpl_cam.py --gpu 1 --cfg configs/256x192_adam_lr1e_3_hrw48_cam_2x_w_pw3d_3dhp_dev_sample_deform_da.yaml   --pf 1

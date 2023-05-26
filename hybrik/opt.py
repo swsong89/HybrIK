@@ -115,7 +115,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = opt.gpu
 # 添加根目录
 currentfile = os.path.abspath(__file__)  # '/home/ssw/code/ik/Hybrik/opt.py'
 if 'data2' in currentfile: # 3090
-    dataset_dir = '/data2/2020/ssw/dataset'
+    dataset_dir = '/data2/2020/ssw/dataset/HMR'
 elif 'code' in currentfile: # r9000p
     dataset_dir = '/home/ssw/code/dataset'
     opt.print_freq = 1
